@@ -17,7 +17,10 @@ To authenticate requests to GitHub, follow this hierarchy to obtain the Personal
    ```
 2. **Environment Variable**: Check if `GITHUB_TOKEN` or `GITHUB_PAT` is defined in the system environment.
 3. **Local Environment File**: Check if a `.env` file exists in the project root containing `GITHUB_TOKEN=ghp_...` or `GITHUB_PAT=ghp_...`.
-4. **Keychain Fallback**: If no token is found, rely on the system's Git credential helper (e.g., macOS Keychain).
+4. **Keychain Fallback (macOS)**: If no token is found, extract a saved token programmatically from the macOS Keychain:
+   ```bash
+   security find-internet-password -s github.com -w
+   ```
 
 ### Configuration Details
 - **GitHub Username / Organization**: `noybiss`
@@ -101,18 +104,18 @@ git config --local user.email "noybiss@users.noreply.github.com"
      ```bash
      gh repo create noybiss/<repo-name> --public --source=. --remote=origin
      ```
-   - If `gh` is not installed, use GitHub REST API via `curl` with the token:
+   - If `gh` is not installed, create it using GitHub's REST API via `curl` with the token:
      ```bash
      curl -H "Authorization: token <token>" https://api.github.com/user/repos -d '{"name":"<repo-name>", "private":false}'
      ```
-     Then add the authenticated remote:
+     Then add the standard SSH remote:
      ```bash
-     git remote add origin https://noybiss:<token>@github.com/noybiss/<repo-name>.git
+     git remote add origin git@github.com:noybiss/<repo-name>.git
      ```
 3. **If Remote Exists**:
-   - Update the URL to inject the token for authentication if running headlessly:
+   - Update the URL to point to the correct remote repository:
      ```bash
-     git remote set-url origin https://noybiss:<token>@github.com/noybiss/<repo-name>.git
+     git remote set-url origin git@github.com:noybiss/<repo-name>.git
      ```
 
 ### Step 5: Stage and Commit
@@ -120,20 +123,38 @@ git config --local user.email "noybiss@users.noreply.github.com"
    ```bash
    git add .
    ```
-2. Commit with the stylized Noybiss commit message (e.g. initial setup):
+2. Commit with the stylized Noybiss commit message (e.g., initial setup):
    ```bash
    git commit -m "🚀 release: initial commit setup for <repo-name>"
    ```
 
-### Step 6: Push to GitHub
+### Step 6: Push to GitHub (With Safe HTTPS / SSH Fallback)
 1. Rename the primary branch to `main` (if it isn't already):
    ```bash
    git branch -M main
    ```
-2. Push local changes:
+2. Push local changes using the default SSH configuration:
    ```bash
    git push -u origin main
    ```
+3. **Crucial Troubleshooting (Silent Push Failures)**:
+   If the push fails, or if it reports `Everything up-to-date` but the repository remains empty on GitHub (which happens when local configurations resolve to different account keys or track caching gets stuck):
+   - Temporarily switch the remote URL to authenticated HTTPS using the retrieved token:
+     ```bash
+     git remote set-url origin https://noybiss:<token>@github.com/noybiss/<repo-name>.git
+     ```
+   - Push the branch:
+     ```bash
+     git push -u origin main
+     ```
+   - **Immediately restore the secure SSH URL** to prevent storing the token in cleartext in the local git configuration (`.git/config`):
+     ```bash
+     git remote set-url origin git@github.com:noybiss/<repo-name>.git
+     ```
 
 ### Step 7: Verification
-Verify that the push was successful by checking the output. Report the repository link `https://github.com/noybiss/<repo-name>` to the user.
+Verify that the push was successful by checking the repository URL status or listing remote commits:
+```bash
+git branch -r && git remote show origin
+```
+Report the repository link `https://github.com/noybiss/<repo-name>` to the user.
