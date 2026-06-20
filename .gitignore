@@ -15,3 +15,8 @@ ENV/
 
 # Local environment variables
 .env
+
+# Private agent guidelines and templates
+PUBLISH_INSTRUCTIONS.md
+gemini.md
+gemeni.md
