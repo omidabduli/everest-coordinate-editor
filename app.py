@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'Interface.html')
+    return send_from_directory('.', 'index.html')
 
 @app.route('/api/detect-crs', methods=['POST'])
 def detect_crs():

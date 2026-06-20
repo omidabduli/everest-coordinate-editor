@@ -31,12 +31,11 @@ Or use the launcher scripts:
 
 ```text
 Everest/
-├── Interface.html          # Frontend web interface (HTML/CSS/JS)
+├── index.html              # Frontend web interface (HTML/CSS/JS)
 ├── app.py                  # Python Flask server & Mistral CRS proxy
 ├── requirements.txt        # Project dependencies list
 ├── RUN_EVEREST.bat         # Windows quick launcher
 ├── RUN_EVEREST.command     # macOS/Linux execution command script
-├── .env.example            # Local environment template configuration
 └── .gitignore              # Git ignore rules
 ```
 

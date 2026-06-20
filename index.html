@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Everest - Coordinate Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -15,11 +18,73 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, var(--bg) 0%, var(--muted) 100%);
             min-height: 100vh;
             padding-top: 44px;
             color: var(--text);
+        }
+
+        /* Fixed Top Header Bar */
+        .header-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 44px;
+            background: rgba(18, 26, 43, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 900;
+        }
+        .header-brand {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 1.1em;
+            letter-spacing: .08em;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .btn-settings {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+        .btn-settings:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border-color: var(--text-muted);
+        }
+        .btn-settings.configured {
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--primary);
+            background: rgba(16, 185, 129, 0.08);
+        }
+        .btn-settings.configured:hover {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--primary);
         }
 
         .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
@@ -353,6 +418,14 @@
     </style>
 </head>
 <body>
+<div class="header-bar">
+    <div class="header-brand">🏔️ EVEREST</div>
+    <div class="header-actions">
+        <button class="btn-settings" id="apiSettingsBtn" onclick="openApiKeyModal()">
+            🔑 Mistral API-Key
+        </button>
+    </div>
+</div>
 <div class="container">
 
     <!-- ── Upload ── -->
@@ -550,6 +623,27 @@
         <div class="modal-foot">
             <button class="btn btn-secondary" onclick="closeExport()">Abbrechen</button>
             <button class="btn btn-primary"   onclick="doExport()">Exportieren</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── API Key Settings Modal ── -->
+<div class="modal" id="apiKeyModal">
+    <div class="modal-box">
+        <div class="modal-title" style="font-family: 'Space Grotesk', sans-serif;">Mistral AI API-Key</div>
+        <div style="font-size: 0.88em; color: var(--text-muted); margin-bottom: 18px; line-height: 1.6;">
+            Trage hier deinen persönlichen <strong>Mistral AI API-Schlüssel</strong> ein. Der Schlüssel wird ausschließlich lokal in deinem Browser (localStorage) gespeichert. Er wird verwendet, um die Koordinatensystem-Erkennung (CRS-Detection) direkt von deinem Browser auszuführen.
+        </div>
+        <div class="fg">
+            <label style="font-weight: 700; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.04em;">Mistral API Key</label>
+            <input type="password" id="apiKeyInput" placeholder="Pastiere deinen API-Key hier..." style="font-family: monospace;">
+        </div>
+        <div class="info-box" style="margin-top: 16px; border-color: rgba(16,185,129,0.2);">
+            Schlüssel erstellen unter: <a href="https://console.mistral.ai/" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:700;">console.mistral.ai</a>
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-secondary" onclick="closeApiKeyModal()">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveApiKey()">Speichern</button>
         </div>
     </div>
 </div>
@@ -820,17 +914,44 @@ Respond ONLY with a JSON object — no markdown, no extra text:
 }`;
 
         try {
-            const resp = await fetch('/api/detect-crs', {
-                method : 'POST',
-                headers: {
-                    'Content-Type' : 'application/json'
-                },
-                body: JSON.stringify({
-                    prompt: prompt
-                })
-            });
+            const api_key = localStorage.getItem('mistral_api_key');
+            let resp;
+            if (api_key) {
+                resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                    method : 'POST',
+                    headers: {
+                        'Content-Type' : 'application/json',
+                        'Authorization': `Bearer ${api_key}`
+                    },
+                    body: JSON.stringify({
+                        model: 'mistral-small-latest',
+                        messages: [{'role': 'user', 'content': prompt}],
+                        temperature: 0.0,
+                        max_tokens: 500
+                    })
+                });
+            } else {
+                resp = await fetch('/api/detect-crs', {
+                    method : 'POST',
+                    headers: {
+                        'Content-Type' : 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt
+                    })
+                });
+            }
 
-            if (!resp.ok) throw new Error(`Mistral API ${resp.status}: ${resp.statusText}`);
+            if (!resp.ok) {
+                if (resp.status === 401) {
+                    throw new Error("Ungültiger Mistral API-Schlüssel (401 Unauthorized). Bitte überprüfe deine Einstellungen.");
+                }
+                if (resp.status === 404 && !api_key) {
+                    throw new Error("Lokaler Server nicht gefunden (404). Bitte richte oben deinen 🔑 Mistral API-Key ein, um die Erkennung auf GitHub Pages zu nutzen.");
+                }
+                throw new Error(`API returned status ${resp.status}`);
+            }
+
             const data    = await resp.json();
             const raw     = (data.choices[0].message.content || '').trim();
             // Strip possible markdown code fences
@@ -1203,9 +1324,51 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         toastT = setTimeout(() => el.classList.remove('show'), 3200);
     }
 
+    // ── API Key Settings ──────────────────────────────────────────────────────
+    function updateApiSettingsButton() {
+        const btn = document.getElementById('apiSettingsBtn');
+        const key = localStorage.getItem('mistral_api_key');
+        if (key) {
+            btn.classList.add('configured');
+            btn.innerHTML = '🔑 API Key (Konfiguriert)';
+        } else {
+            btn.classList.remove('configured');
+            btn.innerHTML = '🔑 Mistral API-Key';
+        }
+    }
+
+    function openApiKeyModal() {
+        const modal = document.getElementById('apiKeyModal');
+        const input = document.getElementById('apiKeyInput');
+        input.value = localStorage.getItem('mistral_api_key') || '';
+        modal.classList.add('active');
+    }
+
+    function closeApiKeyModal() {
+        document.getElementById('apiKeyModal').classList.remove('active');
+    }
+
+    function saveApiKey() {
+        const val = document.getElementById('apiKeyInput').value.trim();
+        if (val) {
+            localStorage.setItem('mistral_api_key', val);
+            toast('API-Key erfolgreich gespeichert!', 'ok');
+        } else {
+            localStorage.removeItem('mistral_api_key');
+            toast('API-Key gelöscht.', 'ok');
+        }
+        updateApiSettingsButton();
+        closeApiKeyModal();
+        detectCRS(); // re-trigger detection with new key
+    }
+
+    // Initialize API Key Button
+    updateApiSettingsButton();
+
     // Close modals on backdrop click
     document.getElementById('bulkModal').addEventListener('click',   e => { if (e.target.id === 'bulkModal')   closeBulk(); });
     document.getElementById('exportModal').addEventListener('click', e => { if (e.target.id === 'exportModal') closeExport(); });
+    document.getElementById('apiKeyModal').addEventListener('click', e => { if (e.target.id === 'apiKeyModal') closeApiKeyModal(); });
 </script>
 </body>
 </html>
