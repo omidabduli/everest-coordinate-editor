@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Everest - Coordinate Editor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0b1220; --surface: #121a2b; --muted: #0f172a;
+            --border: #1e293b; --text: #e5e7eb; --text-muted: #a3b2c7;
+            --primary: #10b981; --primary-hover: #059669;
+            --danger: #ef4444; --warning: #f59e0b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, var(--muted) 100%);
+            min-height: 100vh;
+            padding-top: 44px;
+            color: var(--text);
+        }
+
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+
+        /* Toolbar */
+        .toolbar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            padding: 9px 18px; border: none; border-radius: 8px;
+            font-size: .9em; font-weight: 600; cursor: pointer;
+            transition: all .2s; display: inline-flex; align-items: center;
+            gap: 6px; white-space: nowrap;
+        }
+        .btn-primary  { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: #fff; }
+        .btn-primary:hover  { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.3); }
+        .btn-secondary { background: var(--muted); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+        .btn-warning  { background: linear-gradient(135deg, var(--warning), #d97706); color: #fff; }
+        .btn-warning:hover  { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,.3); }
+
+        .file-info {
+            flex: 1; display: flex; align-items: center; gap: 10px;
+            color: var(--text-muted); font-size: .9em; overflow: hidden;
+            min-width: 0;
+        }
+        .file-info .fn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .badge {
+            background: var(--primary); color: #fff;
+            padding: 3px 10px; border-radius: 5px;
+            font-weight: 700; font-size: .8em; flex-shrink: 0;
+        }
+
+        /* Stats */
+        .stats-bar { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+        .stat-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; padding: 14px 20px; flex: 1; min-width: 120px;
+        }
+        .stat-label { color: var(--text-muted); font-size: .8em; margin-bottom: 2px; }
+        .stat-value { font-size: 1.7em; font-weight: 700; color: var(--primary); }
+
+        /* Column min/max bar */
+        .col-stats-bar {
+            overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px;
+        }
+        .col-stats-bar::-webkit-scrollbar { height: 5px; }
+        .col-stats-bar::-webkit-scrollbar-track { background: var(--muted); border-radius: 3px; }
+        .col-stats-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .csi {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 8px; padding: 9px 14px; min-width: 128px; flex-shrink: 0;
+        }
+        .csi-lbl  { color: var(--text-muted); font-size: .72em; font-weight: 700; margin-bottom: 4px; letter-spacing: .04em; text-transform: uppercase; }
+        .csi-body { font-size: .85em; line-height: 2; }
+        .csi-min  { color: #34d399; font-weight: 700; }
+        .csi-max  { color: #fbbf24; font-weight: 700; }
+        .csi-txt  { color: var(--text-muted); font-style: italic; font-size: .8em; }
+
+        /* Upload zone */
+        .editor-container {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin-bottom: 20px;
+        }
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: 12px;
+            padding: 60px 40px; text-align: center; transition: all .3s; cursor: pointer;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--primary); background: rgba(16,185,129,.05);
+        }
+        .upload-icon { font-size: 3em; margin-bottom: 14px; opacity: .5; }
+        .upload-text { font-size: 1.1em; margin-bottom: 6px; }
+        .upload-hint { color: var(--text-muted); font-size: .9em; }
+        #fileInput { display: none; }
+
+        /* Table */
+        .table-wrapper {
+            overflow: auto; height: 560px;
+            border: 1px solid var(--border); border-radius: 8px;
+            will-change: scroll-position;
+        }
+        table { width: 100%; border-collapse: collapse; background: var(--surface); }
+        th {
+            background: var(--muted); color: var(--text); font-weight: 600;
+            padding: 10px 12px; border: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 10; white-space: nowrap;
+        }
+        td { padding: 0; border: 1px solid var(--border); height: 33px; }
+        td input[type="text"] {
+            width: 100%; height: 100%; padding: 0 8px;
+            background: transparent; border: none;
+            color: var(--text); font-size: .88em; outline: none;
+        }
+        td input[type="text"]:focus { background: rgba(16,185,129,.08); }
+        .row-num {
+            background: var(--muted); color: var(--text-muted);
+            font-weight: 600; text-align: center;
+            width: 44px; min-width: 44px; font-size: .8em;
+        }
+        .col-hdr { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+        .col-btn {
+            background: rgba(255,255,255,.07); border: none; color: var(--text-muted);
+            padding: 2px 7px; border-radius: 4px; font-size: .75em;
+            cursor: pointer; transition: all .15s; flex-shrink: 0;
+        }
+        .col-btn:hover { background: var(--primary); color: #fff; }
+
+        /* Modals */
+        .modal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.72); z-index: 1000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-box {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 28px; max-width: 480px; width: 100%;
+        }
+        .modal-title { font-size: 1.3em; font-weight: 700; color: var(--primary); margin-bottom: 20px; }
+        .fg { margin-bottom: 14px; }
+        .fg label { display: block; margin-bottom: 6px; font-weight: 600; font-size: .9em; }
+        .fg input, .fg select {
+            width: 100%; padding: 9px 10px;
+            background: var(--muted); border: 1px solid var(--border);
+            color: var(--text); border-radius: 6px; font-size: .93em;
+        }
+        .fg input:focus, .fg select:focus { outline: none; border-color: var(--primary); }
+        .modal-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .info-box {
+            background: var(--muted); border: 1px solid var(--border);
+            border-radius: 6px; padding: 11px; margin-top: 12px;
+            font-size: .85em; color: var(--text-muted); line-height: 1.6;
+        }
+
+        /* Notification */
+        .notif {
+            position: fixed; top: 58px; right: 20px; color: #fff;
+            padding: 12px 22px; border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,.4);
+            z-index: 2000; font-weight: 600; font-size: .93em;
+            display: none; animation: sIn .25s ease;
+        }
+        .notif.show { display: block; }
+        .notif.ok  { background: var(--primary); }
+        .notif.err { background: var(--danger); }
+        @keyframes sIn { from { transform: translateX(100px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+        /* CRS Detection panel */
+        .crs-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
+            display: none;
+        }
+        .crs-panel-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
+        }
+        .crs-title { font-weight: 700; font-size: 1em; color: var(--text); letter-spacing: .02em; }
+        .crs-conf {
+            font-size: .78em; font-weight: 700; padding: 3px 12px;
+            border-radius: 20px; border: 1px solid currentColor;
+        }
+        .crs-conf.high   { color: #34d399; border-color: #34d399; background: rgba(52,211,153,.1); }
+        .crs-conf.medium { color: #fbbf24; border-color: #fbbf24; background: rgba(251,191,36,.1); }
+        .crs-conf.low    { color: #a3b2c7; border-color: #a3b2c7; background: rgba(163,178,199,.08); }
+        .crs-body { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+        /* MIKE recommendation box */
+        .crs-mike {
+            flex-shrink: 0; min-width: 240px; max-width: 340px;
+            background: rgba(16,185,129,.07); border: 2px solid rgba(16,185,129,.35);
+            border-radius: 10px; padding: 14px 18px;
+        }
+        .crs-mike-lbl {
+            font-size: .75em; font-weight: 700; color: #34d399;
+            letter-spacing: .07em; text-transform: uppercase; margin-bottom: 10px;
+        }
+        .crs-mike-path {
+            font-size: .82em; color: var(--text-muted); margin-bottom: 6px; line-height: 1.6;
+        }
+        .crs-mike-name {
+            font-size: 1em; font-weight: 800; color: #34d399;
+            word-break: break-all; line-height: 1.4;
+        }
+        .crs-mike-note {
+            font-size: .78em; color: var(--text-muted); margin-top: 8px; line-height: 1.5;
+        }
+        /* Properties table */
+        .crs-props { flex: 1; min-width: 260px; }
+        .crs-sys-name {
+            font-size: .95em; font-weight: 700; color: var(--primary);
+            margin-bottom: 10px; word-break: break-all;
+        }
+        .crs-table { width: 100%; border-collapse: collapse; font-size: .86em; }
+        .crs-table tr { border-bottom: 1px solid var(--border); }
+        .crs-table tr:last-child { border-bottom: none; }
+        .crs-table td { padding: 5px 10px; vertical-align: top; }
+        .crs-table td:first-child { color: var(--text-muted); white-space: nowrap; width: 160px; min-width: 140px; }
+        .crs-table td:nth-child(2) { font-weight: 600; color: var(--text); }
+        .crs-table td:nth-child(3) { color: var(--text-muted); text-align: right; font-size: .82em; padding-right: 4px; white-space: nowrap; }
+        .crs-warn { font-size: .84em; margin-top: 10px; padding: 9px 12px;
+            background: rgba(251,191,36,.08); border-left: 3px solid #fbbf24;
+            border-radius: 4px; color: #fbbf24; line-height: 1.55; }
+
+        @media (max-width: 768px) {
+            .toolbar { flex-direction: column; align-items: stretch; }
+            .btn { justify-content: center; }
+        }
+
+        /* ── Info / Feature cards ── */
+        .info-section {
+            margin-top: 28px;
+        }
+        .info-hero {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .info-hero-title {
+            font-size: 2em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #6ee7b7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+            margin-bottom: 10px;
+        }
+        .info-hero-sub {
+            color: var(--text-muted);
+            font-size: 1em;
+            max-width: 560px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 18px;
+        }
+        .feat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px 22px 20px;
+            position: relative;
+            overflow: hidden;
+            transition: transform .2s, box-shadow .2s, border-color .2s;
+        }
+        .feat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0,0,0,.35);
+            border-color: rgba(16,185,129,.35);
+        }
+        .feat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--feat-color, linear-gradient(90deg,#10b981,#34d399));
+            border-radius: 14px 14px 0 0;
+        }
+        .feat-icon {
+            font-size: 2em;
+            margin-bottom: 12px;
+            display: block;
+        }
+        .feat-title {
+            font-size: 1em;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 8px;
+            letter-spacing: .01em;
+        }
+        .feat-desc {
+            color: var(--text-muted);
+            font-size: .875em;
+            line-height: 1.65;
+        }
+        .feat-badge {
+            display: inline-block;
+            margin-top: 12px;
+            font-size: .72em;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+        .badge-ai    { background: rgba(139,92,246,.15); color: #a78bfa; border: 1px solid rgba(139,92,246,.3); }
+        .badge-new   { background: rgba(16,185,129,.12); color: #34d399;  border: 1px solid rgba(16,185,129,.3); }
+        .badge-power { background: rgba(245,158,11,.12); color: #fbbf24;  border: 1px solid rgba(245,158,11,.3); }
+        .info-divider {
+            text-align: center;
+            margin: 36px 0 20px;
+            color: var(--text-muted);
+            font-size: .82em;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .info-divider::before, .info-divider::after {
+            content: ''; flex: 1;
+            height: 1px; background: var(--border);
+        }
+        .formats-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .fmt-chip {
+            background: var(--muted);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 18px;
+            font-size: .85em;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: .04em;
+        }
+        .fmt-chip span { color: var(--primary); }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ── Upload ── -->
+    <div id="uploadSection">
+        <div class="editor-container" style="margin-bottom:24px">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Datei hier ablegen oder klicken zum Auswählen</div>
+                <div class="upload-hint">Unterstützt: .csv&nbsp;&nbsp;.txt&nbsp;&nbsp;.xyz &nbsp;·&nbsp; Trennzeichen wird automatisch erkannt (Komma, Semikolon, Tab, Leerzeichen)</div>
+            </div>
+            <input type="file" id="fileInput" accept=".csv,.txt,.xyz">
+        </div>
+
+        <!-- ── Feature Info ── -->
+        <div class="info-section">
+            <div class="info-hero">
+                <div class="info-hero-title">XYZ Zero — File Editor</div>
+                <div class="info-hero-sub">A powerful in-browser editor for spatial coordinate files. Load, inspect, edit, mirror and export your XY(Z) data — no installation, no server processing.</div>
+            </div>
+
+            <div class="feature-grid">
+
+                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#7c3aed,#a78bfa)">
+                    <span class="feat-icon">🤖</span>
+                    <div class="feat-title">AI-Powered CRS Detection</div>
+                    <div class="feat-desc">Upload your file and the coordinate reference system (CRS) is detected automatically using AI. The result includes the exact name you need to select in MIKE DHI — no guessing required.</div>
+                    <span class="feat-badge badge-ai">AI</span>
+                </div>
+
+                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#10b981,#34d399)">
+                    <span class="feat-icon">↔</span>
+                    <div class="feat-title">Mirror &amp; Flip</div>
+                    <div class="feat-desc">Reflect your point cloud around the bounding-box centre — horizontally (X axis), vertically (Y axis), or both axes at once. The centre is calculated automatically; no manual input needed.</div>
+                    <span class="feat-badge badge-new">3 modes</span>
+                </div>
+
+                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#f59e0b,#fbbf24)">
+                    <span class="feat-icon">⚡</span>
+                    <div class="feat-title">Bulk Column Editing</div>
+                    <div class="feat-desc">Edit an entire column in one operation — add a constant, multiply, divide, set a fixed value, or apply a formula. Changes are applied instantly across all rows, no matter how large the file.</div>
+                    <span class="feat-badge badge-power">Power feature</span>
+                </div>
+
+                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#0ea5e9,#38bdf8)">
+                    <span class="feat-icon">📊</span>
+                    <div class="feat-title">Live Statistics</div>
+                    <div class="feat-desc">A per-column statistics bar shows the Min and Max of every column at a glance. Row count, column count and file size update in real time as you edit.</div>
+                    <span class="feat-badge badge-new">Auto-updates</span>
+                </div>
+
+                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#ec4899,#f472b6)">
+                    <span class="feat-icon">💾</span>
+                    <div class="feat-title">Flexible Export</div>
+                    <div class="feat-desc">Export your data in multiple formats — plain CSV (comma or semicolon), tab-delimited TXT, or MIKE by DHI XYZ format (space-delimited, dot decimals, no header). Column order is always preserved.</div>
+                    <span class="feat-badge badge-power">Multi-format</span>
+                </div>
+
+                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#6366f1,#818cf8)">
+                    <span class="feat-icon">🗂️</span>
+                    <div class="feat-title">Column Management</div>
+                    <div class="feat-desc">Reorder columns with the ◀ ▶ arrow buttons in the header, add or remove columns at any time, and add individual rows. Row order is strictly preserved — the data is never silently sorted.</div>
+                    <span class="feat-badge badge-new">Non-destructive</span>
+                </div>
+
+            </div>
+
+            <div class="info-divider">Supported file formats</div>
+            <div class="formats-row">
+                <div class="fmt-chip"><span>.csv</span> — Comma / Semicolon delimited</div>
+                <div class="fmt-chip"><span>.txt</span> — Tab / Space / any delimiter</div>
+                <div class="fmt-chip"><span>.xyz</span> — MIKE DHI, plain XYZ grids</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Editor ── -->
+    <div id="editorSection" style="display:none">
+        <div class="toolbar">
+            <button class="btn btn-primary"   onclick="openFile()">📁 Datei öffnen</button>
+            <button class="btn btn-secondary" onclick="addRow()">➕ Zeile</button>
+            <button class="btn btn-secondary" onclick="addColumn()">➕ Spalte</button>
+            <button class="btn btn-warning"   onclick="clearAll()">🗑️ Zurücksetzen</button>
+            <button class="btn btn-secondary" onclick="mirrorData('h')" title="Daten horizontal spiegeln (X-Achse)">↔ Spiegeln H</button>
+            <button class="btn btn-secondary" onclick="mirrorData('v')" title="Daten vertikal spiegeln (Y-Achse)">↕ Spiegeln V</button>
+            <button class="btn btn-secondary" onclick="mirrorData('both')" title="Beide Achsen gleichzeitig spiegeln (X und Y)">⤢ Spiegeln H+V</button>
+            <button class="btn btn-secondary" onclick="convertToUTM()" title="WGS84 Grad → UTM Zone 32N (Meter)" style="border-color:rgba(99,102,241,.5);color:#818cf8">🔄 WGS84 → UTM 32N</button>
+            <div class="file-info">
+                <span class="fn" id="fileName"></span>
+                <span class="badge" id="fileType"></span>
+                <span id="delimInfo" style="font-size:.8em"></span>
+            </div>
+            <button class="btn btn-primary" onclick="exportFile()">💾 Export</button>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-card"><div class="stat-label">Zeilen</div><div class="stat-value" id="rowCount">0</div></div>
+            <div class="stat-card"><div class="stat-label">Spalten</div><div class="stat-value" id="colCount">0</div></div>
+            <div class="stat-card"><div class="stat-label">Dateigröße</div><div class="stat-value" id="dataSize">—</div></div>
+            <div class="stat-card" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2)">
+                <div class="stat-label">Reihenfolge</div>
+                <div style="font-size:.75em;color:#34d399;font-weight:700;margin-top:2px;">✔ Zeilenreihenfolge<br>wird nicht verändert</div>
+            </div>
+        </div>
+
+        <!-- Per-column min / max -->
+        <div class="col-stats-bar" id="colStatsBar" style="display:none">
+            <div id="colStatsContent" style="display:flex;gap:10px;min-width:max-content;"></div>
+        </div>
+
+        <!-- CRS Detection -->
+        <div class="crs-panel" id="crsPanel">
+            <div class="crs-panel-head">
+                <span class="crs-title">🌐 Erkanntes Koordinatensystem</span>
+                <span class="crs-conf" id="crsConf">—</span>
+            </div>
+            <div class="crs-body">
+                <div class="crs-mike" id="crs-mike-box">
+                    <div class="crs-mike-lbl">📌 In MIKE DHI auswählen:</div>
+                    <div class="crs-mike-path" id="crs-mike-path">—</div>
+                    <div class="crs-mike-name" id="crs-mike-name">—</div>
+                    <div class="crs-mike-note" id="crs-mike-note"></div>
+                </div>
+                <div class="crs-props">
+                    <div class="crs-sys-name" id="crsName"></div>
+                    <table class="crs-table" id="crsTable"></table>
+                    <div class="crs-warn" id="crsUnknown" style="display:none"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-container" style="padding:12px">
+            <div class="table-wrapper" id="tableWrapper">
+                <table>
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Bulk Edit Modal ── -->
+<div class="modal" id="bulkModal">
+    <div class="modal-box">
+        <div class="modal-title">Spalte bearbeiten: <span id="bulkColLabel"></span></div>
+        <div class="fg">
+            <label>Operation</label>
+            <select id="bulkOp">
+                <option value="multiply">✖ Multiplizieren</option>
+                <option value="divide">÷ Dividieren</option>
+                <option value="add">＋ Addieren</option>
+                <option value="subtract">－ Subtrahieren</option>
+                <option value="round">⬤ Runden (Dezimalstellen)</option>
+                <option value="replace">↩ Alle Werte ersetzen</option>
+            </select>
+        </div>
+        <div class="fg" id="bulkValGrp">
+            <label>Wert</label>
+            <input type="number" id="bulkVal" step="any" placeholder="z.B.  1000">
+        </div>
+        <div class="fg" id="bulkDecGrp" style="display:none">
+            <label>Dezimalstellen</label>
+            <input type="number" id="bulkDec" min="0" max="10" value="3">
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-secondary" onclick="closeBulk()">Abbrechen</button>
+            <button class="btn btn-primary"   onclick="applyBulk()">Anwenden</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Export Modal ── -->
+<div class="modal" id="exportModal">
+    <div class="modal-box">
+        <div class="modal-title">Export</div>
+        <div class="fg">
+            <label>Format</label>
+            <select id="exportFmt">
+                <option value="xyz-mike">XYZ — MIKE by DHI (space-delimited, kein Header)</option>
+                <option value="csv">CSV (Komma-getrennt)</option>
+                <option value="txt">TXT (Tab-getrennt)</option>
+            </select>
+        </div>
+        <div class="fg">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer">
+                <input type="checkbox" id="skipHdr" checked style="width:auto">
+                Erste Zeile automatisch ignorieren wenn sie Text enthält
+            </label>
+        </div>
+        <div class="info-box">
+            <strong>MIKE-Format-Regeln:</strong><br>
+            • Keine Header-Zeile · Space-getrennt · Punkt als Dezimal<br>
+            • Kein Leerzeilen am Ende · 3 oder 4 Spalten (X Y Z [Code])
+        </div>
+        <div class="modal-foot">
+            <button class="btn btn-secondary" onclick="closeExport()">Abbrechen</button>
+            <button class="btn btn-primary"   onclick="doExport()">Exportieren</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Notification ── -->
+<div class="notif" id="notif"></div>
+
+<script>
+    // ── State ────────────────────────────────────────────────────────────────
+    let rows      = [];      // string[][]
+    let ncols     = 0;
+    let fname     = '';
+    let ftype     = '';
+    let fbytes    = 0;
+    let delim     = ',';
+    let editColI  = -1;
+
+    // Virtual scroll
+    const ROW_H  = 33;
+    const BUFFER = 30;
+    let   raf    = false;
+
+    // ── Upload ───────────────────────────────────────────────────────────────
+    const zone  = document.getElementById('uploadZone');
+    const inp   = document.getElementById('fileInput');
+
+    zone.addEventListener('click', () => inp.click());
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+    });
+    inp.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+    function loadFile(file) {
+        if (file.size > 100 * 1024 * 1024) { toast('Datei zu groß (max 100 MB)', 'err'); return; }
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!['csv','txt','xyz'].includes(ext)) { toast('Format nicht unterstützt (.csv .txt .xyz)', 'err'); return; }
+        fname  = file.name;
+        ftype  = ext.toUpperCase();
+        fbytes = file.size;
+        const r = new FileReader();
+        r.onload = e => parseContent(e.target.result);
+        r.readAsText(file);
+    }
+
+    // ── Parse ────────────────────────────────────────────────────────────────
+    function parseContent(raw) {
+        // Find first non-empty line for delimiter detection
+        let firstLine = '';
+        let pos = 0;
+        while (pos < raw.length) {
+            const nl = raw.indexOf('\n', pos);
+            const line = (nl === -1 ? raw.slice(pos) : raw.slice(pos, nl)).trim();
+            if (line) { firstLine = line; break; }
+            if (nl === -1) break;
+            pos = nl + 1;
+        }
+
+        // Count candidate delimiters in first line
+        const cnt = {
+            ';':  (firstLine.match(/;/g)  || []).length,
+            ',':  (firstLine.match(/,/g)  || []).length,
+            '\t': (firstLine.match(/\t/g) || []).length,
+        };
+        // Pick delimiter with highest count; space is the fallback
+        let best = ' ';
+        let bestN = 0;
+        for (const [d, n] of Object.entries(cnt)) {
+            if (n > bestN) { bestN = n; best = d; }
+        }
+        delim = best;
+
+        // Parse every line
+        rows  = [];
+        ncols = 0;
+        const lines = raw.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            let cells;
+            if (delim === ' ') {
+                cells = line.split(/\s+/);
+            } else {
+                cells = line.split(delim);
+                for (let j = 0; j < cells.length; j++)
+                    cells[j] = cells[j].trim().replace(/^["']|["']$/g, '');
+            }
+            if (cells.length > ncols) ncols = cells.length;
+            rows.push(cells);
+        }
+
+        if (!rows.length) { toast('Datei ist leer!', 'err'); return; }
+
+        const dLabel = delim === '\t' ? 'Tab' : delim === ' ' ? 'Space' : `"${delim}"`;
+        document.getElementById('delimInfo').textContent   = `| Trennzeichen: ${dLabel}`;
+        document.getElementById('fileName').textContent    = fname;
+        document.getElementById('fileType').textContent    = ftype;
+        document.getElementById('uploadSection').style.display = 'none';
+        document.getElementById('editorSection').style.display = 'block';
+        updateStats();
+        buildTable();
+        computeColStats();
+        detectCRS();
+        toast(`${rows.length.toLocaleString('de')} Zeilen geladen`, 'ok');
+    }
+
+    // ── Table (virtual scroll) ────────────────────────────────────────────────
+    function buildTable() {
+        const thead = document.getElementById('tableHead');
+        let h = '<tr><th class="row-num">#</th>';
+        for (let i = 0; i < ncols; i++) {
+            // ◀ ▶ buttons let the user reorder columns (e.g. swap X/Y if source has them reversed)
+            const leftBtn  = i > 0        ? `<button class="col-btn" onclick="moveCol(${i},-1)" title="Spalte nach links">◀</button>` : '';
+            const rightBtn = i < ncols-1  ? `<button class="col-btn" onclick="moveCol(${i},+1)" title="Spalte nach rechts">▶</button>` : '';
+            h += `<th><div class="col-hdr"><span>Spalte ${i+1}</span><div style="display:flex;gap:3px">` +
+                 leftBtn + rightBtn +
+                 `<button class="col-btn" onclick="startBulk(${i})" title="Spalte bearbeiten">✏️</button>` +
+                 `<button class="col-btn" onclick="delCol(${i})" title="Spalte löschen">✕</button>` +
+                 `</div></div></th>`;
+        }
+        h += '</tr>';
+        thead.innerHTML = h;
+        document.getElementById('tableWrapper').scrollTop = 0;
+        renderRows();
+    }
+
+    function renderRows() {
+        const wrapper = document.getElementById('tableWrapper');
+        const tbody   = document.getElementById('tableBody');
+        const total   = rows.length;
+        if (!total) { tbody.innerHTML = ''; return; }
+
+        const top     = wrapper.scrollTop;
+        const visible = Math.ceil(wrapper.clientHeight / ROW_H);
+        const first   = Math.floor(top / ROW_H);
+        const start   = Math.max(0, first - BUFFER);
+        const end     = Math.min(total - 1, first + visible + BUFFER);
+
+        let h = '';
+        const tp = start * ROW_H;
+        if (tp > 0) h += `<tr style="height:${tp}px"><td colspan="${ncols+1}" style="padding:0;border:0"></td></tr>`;
+
+        for (let r = start; r <= end; r++) {
+            const row = rows[r];
+            h += `<tr><td class="row-num">${r+1}</td>`;
+            for (let c = 0; c < ncols; c++) {
+                const v    = (row && row[c] != null) ? row[c] : '';
+                const safe = v.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+                h += `<td><input type="text" value="${safe}" data-r="${r}" data-c="${c}"></td>`;
+            }
+            h += '</tr>';
+        }
+
+        const bp = Math.max(0, (total - 1 - end) * ROW_H);
+        if (bp > 0) h += `<tr style="height:${bp}px"><td colspan="${ncols+1}" style="padding:0;border:0"></td></tr>`;
+
+        tbody.innerHTML = h;
+    }
+
+    document.getElementById('tableWrapper').addEventListener('scroll', () => {
+        if (raf) return;
+        raf = true;
+        requestAnimationFrame(() => { renderRows(); raf = false; });
+    });
+
+    // One delegated listener for all cell edits
+    document.getElementById('tableBody').addEventListener('change', e => {
+        const el = e.target;
+        if (el.tagName !== 'INPUT') return;
+        const r = +el.dataset.r, c = +el.dataset.c;
+        if (!rows[r]) rows[r] = [];
+        rows[r][c] = el.value;
+    });
+
+    // ── Stats ─────────────────────────────────────────────────────────────────
+    function updateStats() {
+        document.getElementById('rowCount').textContent = rows.length.toLocaleString('de');
+        document.getElementById('colCount').textContent = ncols;
+        document.getElementById('dataSize').textContent =
+            fbytes >= 1048576 ? (fbytes/1048576).toFixed(2)+' MB'
+          : fbytes > 0        ? (fbytes/1024).toFixed(1)+' KB'
+          : '—';
+    }
+
+    // ── Row / column manipulation ─────────────────────────────────────────────
+    // ── Move column left / right (swap with neighbour) ──────────────────────
+    function moveCol(c, dir) {
+        const t = c + dir;
+        if (t < 0 || t >= ncols) return;
+        for (let r = 0; r < rows.length; r++) {
+            const tmp = rows[r][c]; rows[r][c] = rows[r][t]; rows[r][t] = tmp;
+        }
+        buildTable(); computeColStats(); detectCRS();
+        toast(`Spalte ${c+1} → Position ${t+1}`, 'ok');
+    }
+
+    // ── CRS Detection via Mistral AI ──────────────────────────────────────────
+
+    async function detectCRS() {
+        const panel      = document.getElementById('crsPanel');
+        const confEl     = document.getElementById('crsConf');
+        const nameEl     = document.getElementById('crsName');
+        const tableEl    = document.getElementById('crsTable');
+        const unknEl     = document.getElementById('crsUnknown');
+        const mikePathEl = document.getElementById('crs-mike-path');
+        const mikeNameEl = document.getElementById('crs-mike-name');
+        const mikeNoteEl = document.getElementById('crs-mike-note');
+
+        if (!rows.length || ncols < 2) { panel.style.display = 'none'; return; }
+
+        // Collect up to 30 valid numeric pairs
+        const pairs = [];
+        for (let r = 0; r < rows.length && pairs.length < 30; r++) {
+            const xv = parseFloat((rows[r][0] || '').replace(',', '.'));
+            const yv = parseFloat((rows[r][1] || '').replace(',', '.'));
+            if (!isNaN(xv) && !isNaN(yv)) pairs.push([xv, yv]);
+        }
+        if (pairs.length < 3) { panel.style.display = 'none'; return; }
+
+        // Show panel in loading state
+        panel.style.display  = 'block';
+        mikePathEl.textContent = '⏳ KI analysiert…';
+        mikeNameEl.textContent = '';
+        mikeNoteEl.textContent = '';
+        nameEl.textContent     = '';
+        confEl.textContent     = '⏳ Warte auf Mistral AI…';
+        confEl.className       = 'crs-conf medium';
+        tableEl.innerHTML      = '';
+        unknEl.style.display   = 'none';
+
+        // Coordinate statistics for the prompt
+        const xs   = pairs.map(p => p[0]);
+        const ys   = pairs.map(p => p[1]);
+        const xminV = Math.min(...xs), xmaxV = Math.max(...xs);
+        const yminV = Math.min(...ys), ymaxV = Math.max(...ys);
+        const sortArr = a => a.slice().sort((a, b) => a - b);
+        const xmed  = sortArr(xs)[Math.floor(xs.length / 2)];
+        const ymed  = sortArr(ys)[Math.floor(ys.length / 2)];
+        const sampleLines = pairs.slice(0, 15).map(p => `${p[0]}  ${p[1]}`).join('\n');
+
+        const prompt =
+`You are a GIS expert. Identify the coordinate reference system (CRS) from the sample XY coordinate pairs below.
+
+Sample data (X  Y):
+${sampleLines}
+
+Statistics:
+X range: ${xminV} – ${xmaxV}  (median: ${xmed})
+Y range: ${yminV} – ${ymaxV}  (median: ${ymed})
+
+Respond ONLY with a JSON object — no markdown, no extra text:
+{
+  "crs_name": "full system name, e.g. WGS_1984_UTM_Zone_32N",
+  "mike_path": "MIKE DHI group/folder name, e.g. Wgs 1984",
+  "mike_name": "exact entry name as shown in MIKE DHI coordinate list, e.g. WGS_1984_UTM_Zone_32N",
+  "epsg": "EPSG:XXXXX",
+  "datum": "e.g. D_WGS_1984",
+  "ellipsoid": "e.g. WGS_1984",
+  "projection": "e.g. Transverse_Mercator  or  Geographic",
+  "central_meridian": "e.g. 9°",
+  "false_easting": "e.g. 500.000",
+  "false_northing": "e.g. 0",
+  "confidence": "high or medium or low",
+  "note": "short remark if needed, otherwise empty string"
+}`;
+
+        try {
+            const resp = await fetch('/api/detect-crs', {
+                method : 'POST',
+                headers: {
+                    'Content-Type' : 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt: prompt
+                })
+            });
+
+            if (!resp.ok) throw new Error(`Mistral API ${resp.status}: ${resp.statusText}`);
+            const data    = await resp.json();
+            const raw     = (data.choices[0].message.content || '').trim();
+            // Strip possible markdown code fences
+            const jsonStr = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+            const crs     = JSON.parse(jsonStr);
+
+            // Populate confidence badge
+            const conf = (crs.confidence || 'low').toLowerCase();
+            confEl.textContent = conf === 'high'   ? '✔ Konfidenz: Hoch'
+                               : conf === 'medium' ? '⚠ Konfidenz: Mittel'
+                               :                     '? Niedrig';
+            confEl.className = `crs-conf ${conf}`;
+
+            // Populate MIKE DHI recommendation box
+            mikePathEl.textContent = (crs.mike_path || '—') + ' →';
+            mikeNameEl.textContent = crs.mike_name  || crs.crs_name || '—';
+            mikeNoteEl.textContent = crs.note || '';
+
+            // System name headline
+            nameEl.textContent = (conf === 'high' ? '✔ ' : '⚠ ') + (crs.crs_name || '—');
+
+            // ArcGIS-style properties table
+            const propRows = [
+                ['Name',             crs.crs_name        || '—'],
+                ['EPSG',             crs.epsg            || '—'],
+                ['Datum',            crs.datum           || '—'],
+                ['Ellipsoid',        crs.ellipsoid       || '—'],
+                ['Prime Meridian',   '0 - Greenwich',       '[Degree]'],
+                ['Projection Type',  crs.projection      || '—'],
+                ['Central Meridian', crs.central_meridian|| '—', crs.projection !== 'Geographic' ? '[Degree]' : ''],
+                ['False Easting',    crs.false_easting   || '—',  '[Meter]'],
+                ['False Northing',   crs.false_northing  || '—',  '[Meter]'],
+            ];
+            tableEl.innerHTML = propRows
+                .map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2] || ''}</td></tr>`)
+                .join('');
+            unknEl.style.display = 'none';
+
+        } catch (err) {
+            // Show error + raw statistics
+            confEl.textContent   = '? Fehler';
+            confEl.className     = 'crs-conf low';
+            mikePathEl.textContent = '—';
+            mikeNameEl.textContent = '—';
+            mikeNoteEl.textContent = '';
+            nameEl.textContent   = '⚠ KI-Erkennung fehlgeschlagen';
+            tableEl.innerHTML    = '';
+            unknEl.style.display = 'block';
+            unknEl.textContent   = `Fehler: ${err.message}  |  Median X: ${Math.round(xmed).toLocaleString('de')}  |  Median Y: ${Math.round(ymed).toLocaleString('de')}  |  X: ${Math.round(xminV).toLocaleString('de')}–${Math.round(xmaxV).toLocaleString('de')}  |  Y: ${Math.round(yminV).toLocaleString('de')}–${Math.round(ymaxV).toLocaleString('de')}`;
+        }
+    }
+
+    // ── Compute per-column min / max ──────────────────────────────────────────
+    function computeColStats() {
+        const bar  = document.getElementById('colStatsBar');
+        const cont = document.getElementById('colStatsContent');
+        if (!rows.length || !ncols) { bar.style.display = 'none'; return; }
+        let html = '';
+        for (let c = 0; c < ncols; c++) {
+            let mn = Infinity, mx = -Infinity, cnt = 0;
+            for (let r = 0; r < rows.length; r++) {
+                const v = (rows[r][c] || '').replace(',', '.');
+                const n = parseFloat(v);
+                if (!isNaN(n)) { if (n < mn) mn = n; if (n > mx) mx = n; cnt++; }
+            }
+            // Format: suppress trailing zeros but keep up to 6 sig figs
+            const fmt = n => parseFloat(n.toPrecision(6)).toLocaleString('de', {maximumFractionDigits: 6});
+            html += `<div class="csi">` +
+                    `<div class="csi-lbl">Spalte ${c+1}</div>` +
+                    (cnt > 0
+                        ? `<div class="csi-body"><span style="color:var(--text-muted)">Min&nbsp;</span><span class="csi-min">${fmt(mn)}</span><br><span style="color:var(--text-muted)">Max&nbsp;</span><span class="csi-max">${fmt(mx)}</span></div>`
+                        : `<div class="csi-txt">Text / leer</div>`
+                    ) +
+                    `</div>`;
+        }
+        cont.innerHTML = html;
+        bar.style.display = 'block';
+    }
+
+    function addRow()    { rows.push(new Array(ncols).fill('')); updateStats(); renderRows(); toast('Zeile hinzugefügt','ok'); }
+
+    // ── WGS84 Geographic → UTM Zone 32N Projection ─────────────────────────
+    // Accurate Transverse Mercator series (Helmert / Bowring)
+    function wgs84ToUTM32N(lonDeg, latDeg) {
+        const a  = 6378137.0;                          // WGS84 semi-major axis
+        const f  = 1 / 298.257223563;                  // flattening
+        const e2 = 2 * f - f * f;                      // eccentricity²
+        const ep2 = e2 / (1 - e2);                     // e'²
+        const k0 = 0.9996;                             // UTM scale factor
+        const FE = 500000;                             // false easting
+        const FN = 0;                                  // false northing (north hemisphere)
+        const lon0 = 9 * Math.PI / 180;               // central meridian Zone 32N = 9°
+
+        const phi = latDeg  * Math.PI / 180;
+        const lam = lonDeg  * Math.PI / 180;
+        const dLam = lam - lon0;
+
+        const sinPhi = Math.sin(phi);
+        const cosPhi = Math.cos(phi);
+        const tanPhi = Math.tan(phi);
+
+        const N  = a / Math.sqrt(1 - e2 * sinPhi * sinPhi);
+        const T  = tanPhi * tanPhi;
+        const C  = ep2 * cosPhi * cosPhi;
+        const A  = dLam * cosPhi;
+
+        // Meridional arc M
+        const M = a * (
+            (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256) * phi
+          - (3*e2/8 + 3*e2*e2/32 + 45*e2*e2*e2/1024) * Math.sin(2*phi)
+          + (15*e2*e2/256 + 45*e2*e2*e2/1024)         * Math.sin(4*phi)
+          - (35*e2*e2*e2/3072)                         * Math.sin(6*phi)
+        );
+
+        const easting = FE + k0 * N * (
+            A
+          + (1 - T + C)           * A*A*A / 6
+          + (5 - 18*T + T*T + 72*C - 58*ep2) * A*A*A*A*A / 120
+        );
+
+        const northing = FN + k0 * (
+            M
+          + N * tanPhi * (
+                A*A / 2
+              + (5 - T + 9*C + 4*C*C)          * A*A*A*A / 24
+              + (61 - 58*T + T*T + 600*C - 330*ep2) * A*A*A*A*A*A / 720
+            )
+        );
+
+        return { easting, northing };
+    }
+
+    function convertToUTM() {
+        if (!rows.length || ncols < 2) { toast('Keine Daten', 'err'); return; }
+
+        // Flush any live DOM edits
+        document.querySelectorAll('#tableBody input[data-r]').forEach(el => {
+            const r = +el.dataset.r, c = +el.dataset.c;
+            if (rows[r]) rows[r][c] = el.value;
+        });
+
+        // Detect which column is longitude (~-180..180) and which is latitude (~-90..90)
+        // by checking the range of the first two numeric columns
+        function colRange(col) {
+            let lo = Infinity, hi = -Infinity;
+            for (let r = 0; r < rows.length; r++) {
+                const n = parseFloat(String(rows[r][col] == null ? '' : rows[r][col]).replace(',','.'));
+                if (isFinite(n)) { if (n < lo) lo = n; if (n > hi) hi = n; }
+            }
+            return { lo, hi, span: hi - lo };
+        }
+
+        const r0 = colRange(0), r1 = colRange(1);
+        // Latitude is always -90..90, longitude -180..180
+        // Whichever column has values closer to lat range (-90..90) is latitude
+        const col0IsLat = (Math.abs(r0.hi) <= 90 && Math.abs(r0.lo) >= -90
+                          && !(Math.abs(r1.hi) <= 90 && Math.abs(r1.lo) >= -90))
+                       || (r0.hi <= 90 && r1.hi > 90);
+        const colLon = col0IsLat ? 1 : 0;
+        const colLat = col0IsLat ? 0 : 1;
+
+        // Sanity check — values must look like geographic degrees
+        if (r0.lo < -180 || r0.hi > 180 || r1.lo < -180 || r1.hi > 180) {
+            toast('Koordinaten scheinen nicht in WGS84-Grad zu sein', 'err'); return;
+        }
+
+        let converted = 0;
+        for (let r = 0; r < rows.length; r++) {
+            const lon = parseFloat(String(rows[r][colLon] == null ? '' : rows[r][colLon]).replace(',','.'));
+            const lat = parseFloat(String(rows[r][colLat] == null ? '' : rows[r][colLat]).replace(',','.'));
+            if (!isFinite(lon) || !isFinite(lat)) continue;
+            const { easting, northing } = wgs84ToUTM32N(lon, lat);
+            rows[r][colLon] = easting.toFixed(3);
+            rows[r][colLat] = northing.toFixed(3);
+            converted++;
+        }
+
+        buildTable();
+        computeColStats();
+        detectCRS();
+        toast(`✔ ${converted.toLocaleString('de')} Punkte → UTM 32N  (Sp.${colLon+1}=Easting, Sp.${colLat+1}=Northing)`, 'ok');
+    }
+
+    // ── Mirror / Flip ──────────────────────────────────────────────────────────
+    function mirrorData(axis) {
+        if (!rows.length || ncols < 2) { toast('Keine Daten', 'err'); return; }
+
+        // Flush any live DOM edits into the rows array first
+        document.querySelectorAll('#tableBody input[data-r]').forEach(el => {
+            const r = +el.dataset.r, c = +el.dataset.c;
+            if (rows[r]) rows[r][c] = el.value;
+        });
+
+        // Compute median of a column's numeric values
+        function colMedian(col) {
+            const vals = [];
+            for (let r = 0; r < rows.length; r++) {
+                const n = parseFloat(String(rows[r][col] == null ? '' : rows[r][col]).replace(',', '.'));
+                if (isFinite(n)) vals.push(n);
+            }
+            if (!vals.length) return NaN;
+            vals.sort((a, b) => a - b);
+            return vals[Math.floor(vals.length / 2)];
+        }
+
+        // Auto-detect which of col 0 and col 1 is X (horizontal) and which is Y (vertical)
+        // The column with the LARGER median value is X (longitude/easting tends to be bigger)
+        const med0 = colMedian(0);
+        const med1 = colMedian(1);
+        const colX = (med0 >= med1) ? 0 : 1;   // column that holds X / horizontal coords
+        const colY = (med0 >= med1) ? 1 : 0;   // column that holds Y / vertical coords
+
+        // Reflect a column: new = lo + hi - old  (mirror around bounding-box centre)
+        function flipCol(col) {
+            let lo = Infinity, hi = -Infinity;
+            for (let r = 0; r < rows.length; r++) {
+                const n = parseFloat(String(rows[r][col] == null ? '' : rows[r][col]).replace(',', '.'));
+                if (isFinite(n)) { if (n < lo) lo = n; if (n > hi) hi = n; }
+            }
+            if (!isFinite(lo) || lo === hi) return null;
+            for (let r = 0; r < rows.length; r++) {
+                const n = parseFloat(String(rows[r][col] == null ? '' : rows[r][col]).replace(',', '.'));
+                if (isFinite(n)) rows[r][col] = String(lo + hi - n);
+            }
+            return { lo, hi };
+        }
+
+        let resX = null, resY = null;
+        if (axis === 'h'    || axis === 'both') resX = flipCol(colX);
+        if (axis === 'v'    || axis === 'both') resY = flipCol(colY);
+
+        buildTable();
+        computeColStats();
+        detectCRS();
+
+        const fmtRange = (r) => r ? `${r.lo.toLocaleString('de',{maximumFractionDigits:6})} ↔ ${r.hi.toLocaleString('de',{maximumFractionDigits:6})}` : '–';
+        if (axis === 'both') {
+            toast(`H+V gespiegelt  |  X(Sp.${colX+1}): ${fmtRange(resX)}  |  Y(Sp.${colY+1}): ${fmtRange(resY)}`, 'ok');
+        } else if (axis === 'h') {
+            toast(`H gespiegelt  —  X ist Spalte ${colX+1}  |  X-Bereich: ${fmtRange(resX)}`, 'ok');
+        } else {
+            toast(`V gespiegelt  —  Y ist Spalte ${colY+1}  |  Y-Bereich: ${fmtRange(resY)}`, 'ok');
+        }
+    }
+    function addColumn() {
+        ncols++;
+        for (let i = 0; i < rows.length; i++) while (rows[i].length < ncols) rows[i].push('');
+        buildTable(); updateStats(); toast('Spalte hinzugefügt','ok');
+    }
+    function delCol(c) {
+        if (!confirm(`Spalte ${c+1} löschen?`)) return;
+        for (let i = 0; i < rows.length; i++) rows[i].splice(c, 1);
+        ncols = Math.max(0, ncols-1);
+        buildTable(); updateStats(); computeColStats(); toast('Spalte gelöscht','ok');
+    }
+    function clearAll() {
+        if (!confirm('Alle Daten zurücksetzen?')) return;
+        rows = []; ncols = 0; fbytes = 0;
+        document.getElementById('uploadSection').style.display = 'block';
+        document.getElementById('editorSection').style.display = 'none';
+        inp.value = '';
+        toast('Zurückgesetzt','ok');
+    }
+    function openFile() {
+        if (rows.length && !confirm('Aktuelle Daten gehen verloren. Fortfahren?')) return;
+        inp.value = ''; inp.click();
+    }
+
+    // ── Bulk edit ─────────────────────────────────────────────────────────────
+    document.getElementById('bulkOp').addEventListener('change', e => {
+        const rnd = e.target.value === 'round';
+        document.getElementById('bulkValGrp').style.display = rnd ? 'none'  : 'block';
+        document.getElementById('bulkDecGrp').style.display = rnd ? 'block' : 'none';
+    });
+
+    function startBulk(c) {
+        editColI = c;
+        document.getElementById('bulkColLabel').textContent = `Spalte ${c+1}`;
+        document.getElementById('bulkModal').classList.add('active');
+    }
+    function closeBulk()  { document.getElementById('bulkModal').classList.remove('active'); editColI = -1; }
+    function closeExport(){ document.getElementById('exportModal').classList.remove('active'); }
+
+    function applyBulk() {
+        if (editColI < 0) return;
+        const op  = document.getElementById('bulkOp').value;
+        const val = parseFloat(document.getElementById('bulkVal').value);
+        const dec = parseInt(document.getElementById('bulkDec').value);
+        const c   = editColI;
+        for (let i = 0; i < rows.length; i++) {
+            const raw = (rows[i][c] || '').replace(',', '.');   // handle German decimals
+            const n   = parseFloat(raw);
+            if (isNaN(n) && op !== 'replace') continue;
+            switch (op) {
+                case 'multiply': rows[i][c] = (n * val).toString();  break;
+                case 'divide':   rows[i][c] = val ? (n / val).toString() : rows[i][c]; break;
+                case 'add':      rows[i][c] = (n + val).toString();  break;
+                case 'subtract': rows[i][c] = (n - val).toString();  break;
+                case 'round':    rows[i][c] = n.toFixed(dec);        break;
+                case 'replace':  rows[i][c] = val.toString();        break;
+            }
+        }
+        renderRows();
+        computeColStats();
+        closeBulk();
+        toast('Spalte bearbeitet!', 'ok');
+    }
+
+    // ── Export ────────────────────────────────────────────────────────────────
+    function exportFile() { if (!rows.length) { toast('Keine Daten', 'err'); return; } document.getElementById('exportModal').classList.add('active'); }
+
+    function doExport() {
+        const fmt  = document.getElementById('exportFmt').value;
+        const skip = document.getElementById('skipHdr').checked;
+        closeExport();
+        if      (fmt === 'xyz-mike') exportMike(skip);
+        else if (fmt === 'csv')      dl(rows.map(r => r.join(',')).join('\n'),  base()+'.csv',  'text/csv');
+        else                         dl(rows.map(r => r.join('\t')).join('\n'), base()+'.txt',  'text/plain');
+    }
+
+    function base() { return fname.replace(/\.[^.]+$/, ''); }
+
+    function exportMike(skip) {
+        const has4  = ncols >= 4;
+        const lines = [];
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            // Auto-skip text header row
+            if (i === 0 && skip) {
+                if (row.some(c => { const n = parseFloat((c||'').replace(',','.')); return isNaN(n) && (c||'').trim() !== ''; }))
+                    continue;
+            }
+            const cols = has4 ? row.slice(0,4) : row.slice(0,3);
+            const out  = [];
+            let   ok   = true;
+            for (let j = 0; j < cols.length; j++) {
+                const v = (cols[j] || '0').replace(',', '.');   // German decimal fix
+                if (j < 3) {
+                    const n = parseFloat(v);
+                    if (isNaN(n)) { ok = false; break; }
+                    out.push(n.toString());
+                } else {
+                    out.push((parseInt(v) || 0).toString());
+                }
+            }
+            if (ok && out.length) lines.push(out.join(' '));
+        }
+        // Remove trailing blank lines
+        while (lines.length && !lines[lines.length-1].trim()) lines.pop();
+        if (!lines.length) { toast('Keine gültigen numerischen Daten!', 'err'); return; }
+        dl(lines.join('\n'), base()+'.xyz', 'text/plain;charset=utf-8');
+        toast('XYZ exportiert (MIKE-konform)', 'ok');
+    }
+
+    function dl(content, name, mime) {
+        const a = document.createElement('a');
+        a.href  = URL.createObjectURL(new Blob([content], { type: mime }));
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    // ── Toast notifications ───────────────────────────────────────────────────
+    let toastT = null;
+    function toast(msg, type) {
+        const el = document.getElementById('notif');
+        el.textContent = msg;
+        el.className   = `notif ${type} show`;
+        clearTimeout(toastT);
+        toastT = setTimeout(() => el.classList.remove('show'), 3200);
+    }
+
+    // Close modals on backdrop click
+    document.getElementById('bulkModal').addEventListener('click',   e => { if (e.target.id === 'bulkModal')   closeBulk(); });
+    document.getElementById('exportModal').addEventListener('click', e => { if (e.target.id === 'exportModal') closeExport(); });
+</script>
+</body>
+</html>
