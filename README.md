@@ -116,5 +116,11 @@ everest-coordinate-editor/
 
 ---
 
-**Developed & Maintained by [Omid Abduli](https://github.com/omidabduli) ([OA](https://github.com/noybiss))**  
-*Universal Environmental Intelligence Engine.*
+## Author
+
+**Developed and maintained by [Omid Abduli](https://github.com/omidabduli)**
+
+[Roland Digital](https://roland-digital.de/) · Germany
+
+*In-browser spatial coordinate editor, point-cloud transformer, and AI-powered CRS detection workspace for MIKE by DHI & GIS workflows.*
+
