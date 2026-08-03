@@ -1,0 +1,11 @@
+name: everest-coordinate-editor
+
+services:
+  everest:
+    build: .
+    container_name: everest-coordinate-editor
+    ports:
+      - "5007:5007"
+    environment:
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+    restart: unless-stopped

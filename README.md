@@ -2,6 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/Python-3.9+-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask Server](https://img.shields.io/badge/Flask-3.0+-000000.svg?style=flat&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Mistral AI](https://img.shields.io/badge/Mistral%20AI-CRS%20Detection-FF7000.svg?style=flat)](https://mistral.ai/)
 [![MIKE DHI](https://img.shields.io/badge/MIKE%20DHI-XYZ%20Support-005B94.svg?style=flat)](https://www.dhigroup.com/)
 [![Release](https://img.shields.io/github/v/release/omidabduli/everest-coordinate-editor?style=flat&label=release)](https://github.com/omidabduli/everest-coordinate-editor/releases/latest)
@@ -18,6 +19,7 @@
 * **↔ Point-Cloud Spatial Reflection & Mirroring**: Instantly mirror spatial grids along X, Y, or Z axes relative to the point-cloud's automatic bounding-box center.
 * **📊 Live Statistical Bounding Summaries**: Displays instant minimum and maximum bounds for every coordinate column ($X_{\min}, X_{\max}, Y_{\min}, Y_{\max}, Z_{\min}, Z_{\max}$) for fast spatial extent validation.
 * **💾 Native MIKE by DHI XYZ Support**: Export sanitized point data directly to space-separated XYZ format (headerless format tailored for MIKE Zero / MIKE 21 / MIKE 3 mesh generators), CSV, or tab-delimited TXT files.
+* **🐳 Fully Containerized (Docker & Docker Compose)**: One-command containerized deployment with complete environment isolation.
 * **🎨 Modern Responsive Interface**: Sleek dark-mode workspace powered by Glassmorphism design tokens, keyboard navigation, and client-side privacy protection.
 
 ---
@@ -65,11 +67,7 @@ MIKE DHI mesh generators require strict numerical formatting without header cont
 
 ## ⚙️ Main Entry Point & Quick Start
 
-### Prerequisites
-- **Python 3.9+**
-- Packages listed in `requirements.txt` (`Flask`, `requests`, `python-dotenv`)
-
-### Installation & Launch
+### 🐍 Local Python Execution
 
 1. **Clone repository**:
    ```bash
@@ -101,12 +99,34 @@ MIKE DHI mesh generators require strict numerical formatting without header cont
 
 ---
 
+### 🐳 Containerized Execution (Docker)
+
+#### Option A: Using Docker Compose (Recommended)
+```bash
+docker-compose up -d
+```
+Access the application at `http://localhost:5007`.
+
+#### Option B: Using Docker CLI
+```bash
+# Build the container image
+docker build -t everest-coordinate-editor .
+
+# Run container on port 5007
+docker run -d -p 5007:5007 --env-file .env everest-coordinate-editor
+```
+
+---
+
 ## 🗂️ Project Directory Structure
 
 ```text
 everest-coordinate-editor/
 ├── index.html              # Modern dark-mode web app interface (HTML5 / Vanilla CSS / JS)
 ├── app.py                  # Python Flask server & Mistral AI proxy endpoint
+├── Dockerfile              # Containerization image build recipe
+├── docker-compose.yml      # Multi-container orchestrator configuration
+├── .dockerignore           # Docker build exclusion rules
 ├── requirements.txt        # Python package dependencies
 ├── RUN_EVEREST.command     # One-click macOS / Linux shell launcher
 ├── RUN_EVEREST.bat         # One-click Windows batch launcher
@@ -123,4 +143,3 @@ everest-coordinate-editor/
 [Roland Digital](https://roland-digital.de/) · Germany
 
 *In-browser spatial coordinate editor, point-cloud transformer, and AI-powered CRS detection workspace for MIKE by DHI & GIS workflows.*
-
