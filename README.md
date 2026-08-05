@@ -1,145 +1,91 @@
 # 🏔️ Everest — Spatial Coordinate & XYZ Data Editor
 
 [![Python Version](https://img.shields.io/badge/Python-3.9+-blue.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![Flask Server](https://img.shields.io/badge/Flask-3.0+-000000.svg?style=flat&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
-[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Mistral AI](https://img.shields.io/badge/Mistral%20AI-CRS%20Detection-FF7000.svg?style=flat)](https://mistral.ai/)
-[![MIKE DHI](https://img.shields.io/badge/MIKE%20DHI-XYZ%20Support-005B94.svg?style=flat)](https://www.dhigroup.com/)
+[![Flask](https://img.shields.io/badge/Flask-3.0+-000000.svg?style=flat&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![Docker](https://img.shields.io/badge/Docker-Supported-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Release](https://img.shields.io/github/v/release/omidabduli/everest-coordinate-editor?style=flat&label=release)](https://github.com/omidabduli/everest-coordinate-editor/releases/latest)
 [![Developer](https://img.shields.io/badge/Developed%20by-Omid%20Abduli-1648D8.svg?style=flat)](https://github.com/omidabduli)
 
-> **Everest** is a specialized in-browser spatial coordinate editor, point-cloud transformer, and AI-assisted data management workspace built for environmental modelers, hydrologists, GIS analysts, and coastal engineers. It combines local AI Coordinate Reference System (CRS) identification, batch matrix transformations, spatial reflection/mirroring, and native export for MIKE by DHI numerical modeling systems.
+**Everest** is a browser-based coordinate editor and spatial data tool designed for environmental modeling and GIS workflows. It allows you to transform, shift, and mirror spatial point data, automatically identify Coordinate Reference Systems (CRS) using Mistral AI, and export clean XYZ files formatted for MIKE by DHI mesh generators.
 
 ---
 
-## 🚀 Key Features
+## ⚡ Features
 
-* **🤖 AI-Powered CRS & EPSG Identification**: Connects directly to Mistral AI (`mistral-small-latest`) via server proxy or client key to automatically detect spatial coordinate systems from raw coordinate ranges and output exact projection strings required by MIKE by DHI.
-* **⚡ Vectorized Bulk Column Operations**: Apply linear scale factors, shift offsets, mathematical expressions (multiply, divide, add, subtract), decimal precision rounding, or substring replacements across millions of rows in real-time.
-* **↔ Point-Cloud Spatial Reflection & Mirroring**: Instantly mirror spatial grids along X, Y, or Z axes relative to the point-cloud's automatic bounding-box center.
-* **📊 Live Statistical Bounding Summaries**: Displays instant minimum and maximum bounds for every coordinate column ($X_{\min}, X_{\max}, Y_{\min}, Y_{\max}, Z_{\min}, Z_{\max}$) for fast spatial extent validation.
-* **💾 Native MIKE by DHI XYZ Support**: Export sanitized point data directly to space-separated XYZ format (headerless format tailored for MIKE Zero / MIKE 21 / MIKE 3 mesh generators), CSV, or tab-delimited TXT files.
-* **🐳 Fully Containerized (Docker & Docker Compose)**: One-command containerized deployment with complete environment isolation.
-* **🎨 Modern Responsive Interface**: Sleek dark-mode workspace powered by Glassmorphism design tokens, keyboard navigation, and client-side privacy protection.
+* **CRS & EPSG Detection**: Send coordinate samples to Mistral AI (`mistral-small-latest`) to identify projection systems and EPSG codes.
+* **Bulk Coordinate Transformations**: Shift offsets, scale coordinates, perform basic math operations, and apply decimal rounding across entire datasets.
+* **Spatial Axis Mirroring**: Mirror point data along X, Y, or Z axes based on the dataset's bounding box center.
+* **Live Spatial Statistics**: Instant minimum and maximum coordinate boundary summaries (X, Y, Z).
+* **MIKE by DHI XYZ Export**: Export clean space-separated XYZ files ready for MIKE 21 / MIKE 3 mesh generators, as well as standard CSV and TXT files.
+* **Docker Support**: Containerized deployment with Docker and Docker Compose.
 
 ---
 
-## 🛠️ How It Works (Step-by-Step Workflow)
+## 🚀 Quick Start
 
-```mermaid
-graph TD
-    A[📂 Load Spatial Data File .xyz / .csv / .txt] --> B[📊 Parse Columns & Calculate Bounding Bounds]
-    B --> C[🤖 Query AI for CRS / EPSG Detection]
-    C --> D{⚡ Need Coordinate Adjustments?}
-    D -- Yes --> E[🧮 Bulk Edit Operations & Axis Mirroring]
-    D -- No --> F[💾 Select Target Export Format]
-    E --> F
-    F --> G[🚀 Export Headerless MIKE DHI XYZ / CSV / TXT]
+### 1. Local Python Setup
+
+```bash
+# Clone repository
+git clone https://github.com/omidabduli/everest-coordinate-editor.git
+cd everest-coordinate-editor
+
+# Install dependencies
+pip install -r requirements.txt
+
+# (Optional) Set Mistral API key for server-side CRS detection
+export MISTRAL_API_KEY=your_mistral_api_key_here
+
+# Run the app
+python app.py
 ```
 
-1. **Load Spatial File 📂**: Drag and drop any space-delimited `.xyz`, comma-separated `.csv`, or tab-delimited `.txt` spatial point file into the workspace.
-2. **Inspect & Range Audit 📊**: Review live statistics cards showing total row counts, total columns, and min/max spatial boundaries across all dimensions.
-3. **Detect CRS 🤖**: Click **Detect CRS with AI** to send coordinate sample bounds to Mistral AI and receive exact EPSG codes and MIKE DHI projection names.
-4. **Transform Coordinates ⚡**: Perform bulk mathematical operations (e.g., convert feet to meters, shift datum elevation, mirror point-cloud orientation).
-5. **Export & Integrate 💾**: Download formatted XYZ files ready for immediate import into DHI mesh generation software or GIS suites.
+Open `http://localhost:5007` in your browser.
+
+*Note for desktop users:* You can also launch the app using `RUN_EVEREST.command` (macOS/Linux) or `RUN_EVEREST.bat` (Windows).
 
 ---
 
-## ⚙️ Under The Hood (Technical Details)
+### 2. Docker Deployment
 
-### 1. AI-Driven Coordinate Reference System (CRS) Detection 🤖
-Raw spatial files often lack explicit projection metadata. Everest proxies coordinate samples through Flask to Mistral AI:
-$$\text{Prompt} \rightarrow \text{Mistral API} \rightarrow \{\text{EPSG Code, WKT Name, MIKE DHI Projection String}\}$$
+#### Using Docker Compose (Recommended)
 
-### 2. Spatial Reflection & Bounding Box Centering ↔
-Axis mirroring reflects points across the automatic geometric mid-point of the dataset:
-$$X_{\text{mid}} = \frac{\min(X) + \max(X)}{2}, \quad X' = 2 \cdot X_{\text{mid}} - X$$
-
-### 3. MIKE by DHI Format Specification Compliance 💾
-MIKE DHI mesh generators require strict numerical formatting without header contamination:
-```text
-354200.50 5641000.25 -12.45
-354210.00 5641005.00 -12.30
-354220.75 5641010.50 -12.10
-```
-
----
-
-## ⚙️ Main Entry Point & Quick Start
-
-### 🐍 Local Python Execution
-
-1. **Clone repository**:
-   ```bash
-   git clone https://github.com/omidabduli/everest-coordinate-editor.git
-   cd everest-coordinate-editor
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure Environment (Optional for AI CRS Detection)**:
-   Create a `.env` file in the root directory:
-   ```env
-   MISTRAL_API_KEY=your_mistral_api_key_here
-   ```
-   *(Alternatively, configure your API key directly within the app settings modal).*
-
-4. **Run Server**:
-   ```bash
-   python app.py
-   ```
-   Open your browser at `http://localhost:5007`.
-
-5. **Quick Launchers**:
-   - **macOS / Linux**: Double-click or run `./RUN_EVEREST.command`
-   - **Windows**: Double-click `RUN_EVEREST.bat`
-
----
-
-### 🐳 Containerized Execution (Docker)
-
-#### Option A: Using Docker Compose (Recommended)
 ```bash
 docker-compose up -d
 ```
+
 Access the application at `http://localhost:5007`.
 
-#### Option B: Using Docker CLI
+#### Using Docker CLI
+
 ```bash
-# Build the container image
+# Build container image
 docker build -t everest-coordinate-editor .
 
-# Run container on port 5007
+# Run container
 docker run -d -p 5007:5007 --env-file .env everest-coordinate-editor
 ```
 
 ---
 
-## 🗂️ Project Directory Structure
+## 🛠️ Project Structure
 
 ```text
 everest-coordinate-editor/
-├── index.html              # Modern dark-mode web app interface (HTML5 / Vanilla CSS / JS)
-├── app.py                  # Python Flask server & Mistral AI proxy endpoint
-├── Dockerfile              # Containerization image build recipe
-├── docker-compose.yml      # Multi-container orchestrator configuration
-├── .dockerignore           # Docker build exclusion rules
-├── requirements.txt        # Python package dependencies
-├── RUN_EVEREST.command     # One-click macOS / Linux shell launcher
-├── RUN_EVEREST.bat         # One-click Windows batch launcher
-├── .env                    # Local environment config (API keys)
-└── .gitignore              # Git file exclusion rules
+├── index.html              # Main web interface (HTML/CSS/JS)
+├── app.py                  # Flask backend & Mistral AI proxy endpoint
+├── Dockerfile              # Docker container definition
+├── docker-compose.yml      # Docker Compose configuration
+├── requirements.txt        # Python dependencies
+├── RUN_EVEREST.command     # macOS/Linux launcher script
+├── RUN_EVEREST.bat         # Windows launcher script
+└── .env                    # Environment variables (API key configuration)
 ```
 
 ---
 
 ## Author
 
-**Developed and maintained by [Omid Abduli](https://github.com/omidabduli)**
-
+**Developed and maintained by [Omid Abduli](https://github.com/omidabduli)**  
 [Roland Digital](https://roland-digital.de/) · Germany
 
-*In-browser spatial coordinate editor, point-cloud transformer, and AI-powered CRS detection workspace for MIKE by DHI & GIS workflows.*
