@@ -10,6 +10,10 @@
 
 ---
 
+**Live:** [omidabduli.github.io/everest-coordinate-editor](https://omidabduli.github.io/everest-coordinate-editor/). Everything runs in your browser; for CRS detection there, add your own Mistral API key with the 🔑 button (it stays in your browser's local storage).
+
+---
+
 ## ⚡ Features
 
 * **CRS & EPSG Detection**: Send coordinate samples to Mistral AI (`mistral-small-latest`) to identify projection systems and EPSG codes.

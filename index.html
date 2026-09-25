@@ -946,8 +946,9 @@ Respond ONLY with a JSON object — no markdown, no extra text:
                 if (resp.status === 401) {
                     throw new Error("Ungültiger Mistral API-Schlüssel (401 Unauthorized). Bitte überprüfe deine Einstellungen.");
                 }
-                if (resp.status === 404 && !api_key) {
-                    throw new Error("Lokaler Server nicht gefunden (404). Bitte richte oben deinen 🔑 Mistral API-Key ein, um die Erkennung auf GitHub Pages zu nutzen.");
+                // No local server behind the page (e.g. GitHub Pages answers 404/405)
+                if (!api_key && [404, 405, 501].includes(resp.status)) {
+                    throw new Error("Kein lokaler Server gefunden. Bitte richte oben deinen 🔑 Mistral API-Key ein, um die Erkennung auf GitHub Pages zu nutzen.");
                 }
                 throw new Error(`API returned status ${resp.status}`);
             }
