@@ -3,653 +3,386 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Everest - Coordinate Editor</title>
+    <title>Everest — Koordinaten-Editor</title>
+    <meta name="description" content="XYZ-Punktdaten im Browser prüfen, korrigieren und für MIKE by DHI exportieren.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            --bg: #0b1220; --surface: #121a2b; --muted: #0f172a;
-            --border: #1e293b; --text: #e5e7eb; --text-muted: #a3b2c7;
-            --primary: #10b981; --primary-hover: #059669;
-            --danger: #ef4444; --warning: #f59e0b;
+        :root{
+            --bg:#FAF9F5; --surface:#F0EEE6; --raised:#FFFFFF;
+            --ink:#141413; --ink-2:#3D3D3A; --muted:#6E6C64; --line:#E3DFD3;
+            --clay:#C15F3C; --clay-ink:#A94F2F; --clay-soft:#F4E2D8;
+            --sea:#44697A; --sea-soft:#DDE7EA;
+            --serif:"Newsreader","Iowan Old Style","Palatino Linotype",Georgia,serif;
+            --sans:"Instrument Sans","Helvetica Neue",Arial,system-ui,sans-serif;
+            --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+            --wrap:1120px;
+        }
+        @media (prefers-color-scheme:dark){
+            :root:not([data-theme="light"]){
+                color-scheme:dark;
+                --bg:#1C1B19; --surface:#252420; --raised:#2B2A26;
+                --ink:#F0EEE6; --ink-2:#D3D0C6; --muted:#A19E94; --line:#3A3833;
+                --clay:#E08A67; --clay-ink:#E9A083; --clay-soft:#3A2A22;
+                --sea:#93B4C2; --sea-soft:#233036;
+            }
+        }
+        :root[data-theme="dark"]{
+            color-scheme:dark;
+            --bg:#1C1B19; --surface:#252420; --raised:#2B2A26;
+            --ink:#F0EEE6; --ink-2:#D3D0C6; --muted:#A19E94; --line:#3A3833;
+            --clay:#E08A67; --clay-ink:#E9A083; --clay-soft:#3A2A22;
+            --sea:#93B4C2; --sea-soft:#233036;
         }
 
-        body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, var(--bg) 0%, var(--muted) 100%);
-            min-height: 100vh;
-            padding-top: 44px;
-            color: var(--text);
-        }
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+        h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-.01em;text-wrap:balance;margin:0}
+        p{margin:0}
+        a{color:inherit}
+        :focus-visible{outline:2px solid var(--clay);outline-offset:3px;border-radius:4px}
+        @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+        .wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:clamp(16px,4vw,40px)}
+        .wrap.wide{max-width:1320px}
+        .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+        .mono{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+        h1 em,h2 em{font-style:italic;color:var(--clay)}
 
-        /* Fixed Top Header Bar */
-        .header-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 44px;
-            background: rgba(18, 26, 43, 0.8);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            z-index: 900;
-        }
-        .header-brand {
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            font-size: 1.1em;
-            letter-spacing: .08em;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .btn-settings {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 0.8em;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-family: inherit;
-        }
-        .btn-settings:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text);
-            border-color: var(--text-muted);
-        }
-        .btn-settings.configured {
-            border-color: rgba(16, 185, 129, 0.4);
-            color: var(--primary);
-            background: rgba(16, 185, 129, 0.08);
-        }
-        .btn-settings.configured:hover {
-            background: rgba(16, 185, 129, 0.15);
-            border-color: var(--primary);
-        }
+        /* Buttons */
+        .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:999px;font:500 15px/1 var(--sans);text-decoration:none;border:1px solid var(--ink);color:var(--ink);background:transparent;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s}
+        .btn:hover{background:var(--surface)}
+        .btn.primary{background:var(--ink);color:var(--bg)}
+        .btn.primary:hover{background:var(--clay);border-color:var(--clay)}
+        .btn.small{padding:8px 14px;font-size:14px}
+        .chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--raised);color:var(--ink-2);font:400 14px/1 var(--sans);cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s}
+        .chip:hover{border-color:var(--ink);color:var(--ink)}
+        .link-btn{border:0;background:none;padding:6px 2px;color:var(--muted);font:400 14px/1 var(--sans);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+        .link-btn:hover{color:var(--ink)}
 
-        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        .status{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:4px;white-space:nowrap}
+        .status.done{background:var(--sea-soft);color:var(--sea)}
+        .status.active{background:var(--clay-soft);color:var(--clay-ink)}
+        .status.planned{color:var(--muted);border:1px dashed var(--muted)}
 
-        /* Toolbar */
-        .toolbar {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .btn {
-            padding: 9px 18px; border: none; border-radius: 8px;
-            font-size: .9em; font-weight: 600; cursor: pointer;
-            transition: all .2s; display: inline-flex; align-items: center;
-            gap: 6px; white-space: nowrap;
-        }
-        .btn-primary  { background: linear-gradient(135deg, var(--primary), var(--primary-hover)); color: #fff; }
-        .btn-primary:hover  { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.3); }
-        .btn-secondary { background: var(--muted); color: var(--text); border: 1px solid var(--border); }
-        .btn-secondary:hover { background: var(--border); }
-        .btn-warning  { background: linear-gradient(135deg, var(--warning), #d97706); color: #fff; }
-        .btn-warning:hover  { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,.3); }
+        /* Nav */
+        .nav{position:sticky;top:0;z-index:50;height:60px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+        .nav .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:16px}
+        .brand{font-family:var(--serif);font-size:22px;text-decoration:none;letter-spacing:-.01em}
+        .nav-links{display:flex;align-items:center;gap:20px;font-size:14px}
+        .nav-links a{color:var(--ink-2);text-decoration:none}
+        .nav-links a:hover{color:var(--ink)}
+        .key-btn{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-2);font:400 14px/1 var(--sans);cursor:pointer;transition:border-color .2s}
+        .key-btn:hover{border-color:var(--ink)}
+        .key-btn .dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--muted)}
+        .key-btn.configured .dot{background:var(--sea);border-color:var(--sea)}
 
-        .file-info {
-            flex: 1; display: flex; align-items: center; gap: 10px;
-            color: var(--text-muted); font-size: .9em; overflow: hidden;
-            min-width: 0;
-        }
-        .file-info .fn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .badge {
-            background: var(--primary); color: #fff;
-            padding: 3px 10px; border-radius: 5px;
-            font-weight: 700; font-size: .8em; flex-shrink: 0;
-        }
+        /* Start */
+        .hero{padding-block:clamp(56px,8vw,96px) clamp(48px,6vw,72px)}
+        .hero h1{font-size:clamp(40px,6.4vw,76px);line-height:1.04;font-weight:300;margin-top:16px;max-width:15ch}
+        .hero .lede{margin-top:24px;max-width:60ch;font-size:18px;color:var(--ink-2)}
+        .drop{margin-top:40px;padding:clamp(28px,5vw,48px);border:1px dashed var(--muted);border-radius:18px;background:var(--surface);display:grid;gap:18px;justify-items:start;transition:border-color .2s,background .2s}
+        .drop.drag-over{border-color:var(--clay);background:var(--clay-soft)}
+        .drop h2{font-size:30px;line-height:1.1}
+        .drop .actions{display:flex;flex-wrap:wrap;gap:10px}
+        #fileInput{display:none}
 
-        /* Stats */
-        .stats-bar { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
-        .stat-card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 8px; padding: 14px 20px; flex: 1; min-width: 120px;
-        }
-        .stat-label { color: var(--text-muted); font-size: .8em; margin-bottom: 2px; }
-        .stat-value { font-size: 1.7em; font-weight: 700; color: var(--primary); }
+        section.block{padding-block:clamp(64px,9vw,112px)}
+        section.alt{background:var(--surface)}
+        .sec-head{display:grid;grid-template-columns:1fr 1.4fr;gap:24px 64px;align-items:end;margin-bottom:48px}
+        .sec-head h2{font-size:clamp(32px,4.2vw,50px);line-height:1.08;margin-top:12px}
+        .sec-head p{color:var(--ink-2);max-width:58ch}
+        .tools{margin:0;border-top:1px solid var(--ink)}
+        .tools div{display:grid;grid-template-columns:minmax(180px,1fr) 2fr;gap:8px 48px;padding:22px 0;border-bottom:1px solid var(--line)}
+        .tools dt{font-family:var(--serif);font-size:22px;line-height:1.2}
+        .tools dd{margin:0;color:var(--ink-2);max-width:62ch}
 
-        /* Column min/max bar */
-        .col-stats-bar {
-            overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px;
-        }
-        .col-stats-bar::-webkit-scrollbar { height: 5px; }
-        .col-stats-bar::-webkit-scrollbar-track { background: var(--muted); border-radius: 3px; }
-        .col-stats-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-        .csi {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 8px; padding: 9px 14px; min-width: 128px; flex-shrink: 0;
-        }
-        .csi-lbl  { color: var(--text-muted); font-size: .72em; font-weight: 700; margin-bottom: 4px; letter-spacing: .04em; text-transform: uppercase; }
-        .csi-body { font-size: .85em; line-height: 2; }
-        .csi-min  { color: #34d399; font-weight: 700; }
-        .csi-max  { color: #fbbf24; font-weight: 700; }
-        .csi-txt  { color: var(--text-muted); font-style: italic; font-size: .8em; }
+        footer{padding-block:28px;border-top:1px solid var(--line)}
+        footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
 
-        /* Upload zone */
-        .editor-container {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 12px; padding: 20px; margin-bottom: 20px;
-        }
-        .upload-zone {
-            border: 2px dashed var(--border); border-radius: 12px;
-            padding: 60px 40px; text-align: center; transition: all .3s; cursor: pointer;
-        }
-        .upload-zone:hover, .upload-zone.drag-over {
-            border-color: var(--primary); background: rgba(16,185,129,.05);
-        }
-        .upload-icon { font-size: 3em; margin-bottom: 14px; opacity: .5; }
-        .upload-text { font-size: 1.1em; margin-bottom: 6px; }
-        .upload-hint { color: var(--text-muted); font-size: .9em; }
-        #fileInput { display: none; }
+        /* Editor */
+        .editor{padding-block:32px 72px;display:grid;gap:32px}
+        .file-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px}
+        .file-head h1{font-size:clamp(28px,3.4vw,40px);line-height:1.1;word-break:break-all}
+        .file-head .mono{margin-top:8px}
+        .file-head .actions{display:flex;gap:10px;flex-wrap:wrap}
+        .figures{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+        .figures div{padding:18px 20px 16px}
+        .figures div + div{border-left:1px solid var(--line)}
+        .figures div:first-child{padding-left:0}
+        .figures strong{display:block;font-family:var(--serif);font-weight:300;font-size:clamp(30px,4vw,44px);line-height:1;font-variant-numeric:tabular-nums}
+        .figures span{display:block;margin-top:8px}
+        .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px}
+        .toolbar .group{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+        .toolbar .group > .mono{margin-right:4px}
+        .toolbar .end{margin-left:auto}
+
+        /* CRS */
+        .crs{display:none;padding:28px;border-radius:18px;background:var(--surface)}
+        .crs-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+        .crs-name{margin-top:10px;font-size:clamp(24px,3vw,30px);line-height:1.15;word-break:break-word}
+        .crs-body{display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:24px 48px;margin-top:24px}
+        .crs-mike{align-self:start;border-left:2px solid var(--clay);padding-left:16px}
+        .crs-mike-path{margin-top:10px;color:var(--ink-2);font-size:14px}
+        .crs-mike-name{margin-top:4px;font-family:var(--mono);font-size:15px;color:var(--ink);word-break:break-all}
+        .crs-mike-note{margin-top:10px;font-size:14px;color:var(--muted)}
+        .crs-table{width:100%;border-collapse:collapse;font-size:14px}
+        .crs-table td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+        .crs-table tr:last-child td{border-bottom:0}
+        .crs-table td:first-child{color:var(--muted);width:40%;padding-right:16px}
+        .crs-table td:nth-child(2){font-family:var(--mono);font-size:13px}
+        .crs-table td:nth-child(3){font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+        .crs-warn{display:none;margin-top:20px;gap:12px;justify-items:start;color:var(--ink-2);font-size:15px}
+        .crs-warn .mono{line-height:1.7}
 
         /* Table */
-        .table-wrapper {
-            overflow: auto; height: 560px;
-            border: 1px solid var(--border); border-radius: 8px;
-            will-change: scroll-position;
-        }
-        table { width: 100%; border-collapse: collapse; background: var(--surface); }
-        th {
-            background: var(--muted); color: var(--text); font-weight: 600;
-            padding: 10px 12px; border: 1px solid var(--border);
-            position: sticky; top: 0; z-index: 10; white-space: nowrap;
-        }
-        td { padding: 0; border: 1px solid var(--border); height: 33px; }
-        td input[type="text"] {
-            width: 100%; height: 100%; padding: 0 8px;
-            background: transparent; border: none;
-            color: var(--text); font-size: .88em; outline: none;
-        }
-        td input[type="text"]:focus { background: rgba(16,185,129,.08); }
-        .row-num {
-            background: var(--muted); color: var(--text-muted);
-            font-weight: 600; text-align: center;
-            width: 44px; min-width: 44px; font-size: .8em;
-        }
-        .col-hdr { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-        .col-btn {
-            background: rgba(255,255,255,.07); border: none; color: var(--text-muted);
-            padding: 2px 7px; border-radius: 4px; font-size: .75em;
-            cursor: pointer; transition: all .15s; flex-shrink: 0;
-        }
-        .col-btn:hover { background: var(--primary); color: #fff; }
+        .table-wrapper{overflow:auto;height:min(560px,70vh);border-top:1px solid var(--ink);border-bottom:1px solid var(--line);background:var(--bg)}
+        table.data{width:100%;border-collapse:separate;border-spacing:0}
+        .data th{position:sticky;top:0;z-index:2;background:var(--bg);text-align:left;font-weight:400;padding:12px 10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:top}
+        .col-hdr{display:flex;justify-content:space-between;align-items:center;gap:12px}
+        .col-hdr span{font-weight:600;font-size:13px}
+        .col-btns{display:flex;gap:2px}
+        .col-btn{border:0;background:none;color:var(--muted);padding:3px 6px;border-radius:4px;font:400 13px/1 var(--sans);cursor:pointer}
+        .col-btn:hover{color:var(--ink);background:var(--surface)}
+        .col-range{display:block;margin-top:6px;font-weight:400}
+        .data td{height:33px;padding:0;border-bottom:1px solid var(--line)}
+        .data td input[type="text"]{width:100%;height:32px;padding:0 10px;background:transparent;border:0;color:var(--ink);font:13px var(--mono);font-variant-numeric:tabular-nums;outline:none}
+        .data td input[type="text"]:focus{background:var(--clay-soft)}
+        .row-num{width:56px;min-width:56px;color:var(--muted);font:12px var(--mono);text-align:right;padding-right:14px!important;font-variant-numeric:tabular-nums}
+        th.row-num{padding-top:12px}
 
         /* Modals */
-        .modal {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,.72); z-index: 1000;
-            align-items: center; justify-content: center; padding: 20px;
-        }
-        .modal.active { display: flex; }
-        .modal-box {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 12px; padding: 28px; max-width: 480px; width: 100%;
-        }
-        .modal-title { font-size: 1.3em; font-weight: 700; color: var(--primary); margin-bottom: 20px; }
-        .fg { margin-bottom: 14px; }
-        .fg label { display: block; margin-bottom: 6px; font-weight: 600; font-size: .9em; }
-        .fg input, .fg select {
-            width: 100%; padding: 9px 10px;
-            background: var(--muted); border: 1px solid var(--border);
-            color: var(--text); border-radius: 6px; font-size: .93em;
-        }
-        .fg input:focus, .fg select:focus { outline: none; border-color: var(--primary); }
-        .modal-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-        .info-box {
-            background: var(--muted); border: 1px solid var(--border);
-            border-radius: 6px; padding: 11px; margin-top: 12px;
-            font-size: .85em; color: var(--text-muted); line-height: 1.6;
-        }
+        .modal{display:none;position:fixed;inset:0;z-index:100;background:color-mix(in srgb,var(--ink) 40%,transparent);align-items:center;justify-content:center;padding:16px}
+        .modal.active{display:flex}
+        .modal-box{width:100%;max-width:460px;background:var(--raised);border:1px solid var(--line);border-radius:18px;padding:28px}
+        .modal-title{font-family:var(--serif);font-size:30px;line-height:1.1;margin-bottom:20px}
+        .modal-text{color:var(--ink-2);font-size:15px;margin-bottom:18px}
+        .fg{margin-bottom:16px}
+        .fg label{display:block;margin-bottom:6px;font-size:14px;color:var(--ink-2)}
+        .fg input,.fg select{width:100%;padding:10px 12px;background:var(--raised);border:1px solid var(--line);border-radius:12px;color:var(--ink);font:15px var(--sans)}
+        .fg input:focus,.fg select:focus{outline:none;border-color:var(--clay);box-shadow:0 0 0 3px var(--clay-soft)}
+        .fg label.check{display:flex;align-items:center;gap:10px;color:var(--ink);cursor:pointer}
+        .fg label.check input{width:auto;accent-color:var(--clay)}
+        .note{padding-top:14px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+        .note a{color:var(--clay-ink)}
+        .modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
 
         /* Notification */
-        .notif {
-            position: fixed; top: 58px; right: 20px; color: #fff;
-            padding: 12px 22px; border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,.4);
-            z-index: 2000; font-weight: 600; font-size: .93em;
-            display: none; animation: sIn .25s ease;
-        }
-        .notif.show { display: block; }
-        .notif.ok  { background: var(--primary); }
-        .notif.err { background: var(--danger); }
-        @keyframes sIn { from { transform: translateX(100px); opacity: 0; } to { transform: none; opacity: 1; } }
+        .notif{display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:200;max-width:calc(100% - 32px);padding:12px 20px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px}
+        .notif.show{display:block}
+        .notif.err{background:var(--clay-ink);color:#fff}
 
-        /* CRS Detection panel */
-        .crs-panel {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
-            display: none;
+        @media (max-width:880px){
+            .sec-head,.tools div,.crs-body{grid-template-columns:1fr}
+            .toolbar .end{margin-left:0}
         }
-        .crs-panel-head {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 16px; gap: 12px; flex-wrap: wrap;
+        @media (max-width:560px){
+            .nav-links a{display:none}
+            .figures div{padding:14px 12px}
+            .crs{padding:20px}
+            .file-head .actions{width:100%}
         }
-        .crs-title { font-weight: 700; font-size: 1em; color: var(--text); letter-spacing: .02em; }
-        .crs-conf {
-            font-size: .78em; font-weight: 700; padding: 3px 12px;
-            border-radius: 20px; border: 1px solid currentColor;
-        }
-        .crs-conf.high   { color: #34d399; border-color: #34d399; background: rgba(52,211,153,.1); }
-        .crs-conf.medium { color: #fbbf24; border-color: #fbbf24; background: rgba(251,191,36,.1); }
-        .crs-conf.low    { color: #a3b2c7; border-color: #a3b2c7; background: rgba(163,178,199,.08); }
-        .crs-body { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
-        /* MIKE recommendation box */
-        .crs-mike {
-            flex-shrink: 0; min-width: 240px; max-width: 340px;
-            background: rgba(16,185,129,.07); border: 2px solid rgba(16,185,129,.35);
-            border-radius: 10px; padding: 14px 18px;
-        }
-        .crs-mike-lbl {
-            font-size: .75em; font-weight: 700; color: #34d399;
-            letter-spacing: .07em; text-transform: uppercase; margin-bottom: 10px;
-        }
-        .crs-mike-path {
-            font-size: .82em; color: var(--text-muted); margin-bottom: 6px; line-height: 1.6;
-        }
-        .crs-mike-name {
-            font-size: 1em; font-weight: 800; color: #34d399;
-            word-break: break-all; line-height: 1.4;
-        }
-        .crs-mike-note {
-            font-size: .78em; color: var(--text-muted); margin-top: 8px; line-height: 1.5;
-        }
-        /* Properties table */
-        .crs-props { flex: 1; min-width: 260px; }
-        .crs-sys-name {
-            font-size: .95em; font-weight: 700; color: var(--primary);
-            margin-bottom: 10px; word-break: break-all;
-        }
-        .crs-table { width: 100%; border-collapse: collapse; font-size: .86em; }
-        .crs-table tr { border-bottom: 1px solid var(--border); }
-        .crs-table tr:last-child { border-bottom: none; }
-        .crs-table td { padding: 5px 10px; vertical-align: top; }
-        .crs-table td:first-child { color: var(--text-muted); white-space: nowrap; width: 160px; min-width: 140px; }
-        .crs-table td:nth-child(2) { font-weight: 600; color: var(--text); }
-        .crs-table td:nth-child(3) { color: var(--text-muted); text-align: right; font-size: .82em; padding-right: 4px; white-space: nowrap; }
-        .crs-warn { font-size: .84em; margin-top: 10px; padding: 9px 12px;
-            background: rgba(251,191,36,.08); border-left: 3px solid #fbbf24;
-            border-radius: 4px; color: #fbbf24; line-height: 1.55; }
-
-        @media (max-width: 768px) {
-            .toolbar { flex-direction: column; align-items: stretch; }
-            .btn { justify-content: center; }
-        }
-
-        /* ── Info / Feature cards ── */
-        .info-section {
-            margin-top: 28px;
-        }
-        .info-hero {
-            text-align: center;
-            margin-bottom: 32px;
-        }
-        .info-hero-title {
-            font-size: 2em;
-            font-weight: 800;
-            background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #6ee7b7 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-            margin-bottom: 10px;
-        }
-        .info-hero-sub {
-            color: var(--text-muted);
-            font-size: 1em;
-            max-width: 560px;
-            margin: 0 auto;
-            line-height: 1.7;
-        }
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-            gap: 18px;
-        }
-        .feat-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 22px 22px 20px;
-            position: relative;
-            overflow: hidden;
-            transition: transform .2s, box-shadow .2s, border-color .2s;
-        }
-        .feat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 32px rgba(0,0,0,.35);
-            border-color: rgba(16,185,129,.35);
-        }
-        .feat-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: var(--feat-color, linear-gradient(90deg,#10b981,#34d399));
-            border-radius: 14px 14px 0 0;
-        }
-        .feat-icon {
-            font-size: 2em;
-            margin-bottom: 12px;
-            display: block;
-        }
-        .feat-title {
-            font-size: 1em;
-            font-weight: 800;
-            color: var(--text);
-            margin-bottom: 8px;
-            letter-spacing: .01em;
-        }
-        .feat-desc {
-            color: var(--text-muted);
-            font-size: .875em;
-            line-height: 1.65;
-        }
-        .feat-badge {
-            display: inline-block;
-            margin-top: 12px;
-            font-size: .72em;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 20px;
-            letter-spacing: .06em;
-            text-transform: uppercase;
-        }
-        .badge-ai    { background: rgba(139,92,246,.15); color: #a78bfa; border: 1px solid rgba(139,92,246,.3); }
-        .badge-new   { background: rgba(16,185,129,.12); color: #34d399;  border: 1px solid rgba(16,185,129,.3); }
-        .badge-power { background: rgba(245,158,11,.12); color: #fbbf24;  border: 1px solid rgba(245,158,11,.3); }
-        .info-divider {
-            text-align: center;
-            margin: 36px 0 20px;
-            color: var(--text-muted);
-            font-size: .82em;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .info-divider::before, .info-divider::after {
-            content: ''; flex: 1;
-            height: 1px; background: var(--border);
-        }
-        .formats-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 10px;
-        }
-        .fmt-chip {
-            background: var(--muted);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 18px;
-            font-size: .85em;
-            font-weight: 700;
-            color: var(--text-muted);
-            letter-spacing: .04em;
-        }
-        .fmt-chip span { color: var(--primary); }
     </style>
 </head>
 <body>
-<div class="header-bar">
-    <div class="header-brand">🏔️ EVEREST</div>
-    <div class="header-actions">
-        <button class="btn-settings" id="apiSettingsBtn" onclick="openApiKeyModal()">
-            🔑 Mistral API-Key
-        </button>
+<header class="nav">
+    <div class="wrap wide">
+        <a class="brand" href="./">Everest</a>
+        <nav class="nav-links">
+            <a href="https://github.com/omidabduli/everest-coordinate-editor" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+            <button class="key-btn" id="apiSettingsBtn" onclick="openApiKeyModal()"><span class="dot" aria-hidden="true"></span><span>Mistral-Key</span></button>
+        </nav>
     </div>
-</div>
-<div class="container">
+</header>
 
-    <!-- ── Upload ── -->
-    <div id="uploadSection">
-        <div class="editor-container" style="margin-bottom:24px">
-            <div class="upload-zone" id="uploadZone">
-                <div class="upload-icon">📁</div>
-                <div class="upload-text">Datei hier ablegen oder klicken zum Auswählen</div>
-                <div class="upload-hint">Unterstützt: .csv&nbsp;&nbsp;.txt&nbsp;&nbsp;.xyz &nbsp;·&nbsp; Trennzeichen wird automatisch erkannt (Komma, Semikolon, Tab, Leerzeichen)</div>
+<!-- ── Start ── -->
+<main id="uploadSection">
+    <section class="hero">
+        <div class="wrap">
+            <p class="eyebrow">Koordinaten-Editor für MIKE by DHI</p>
+            <h1>XYZ-Daten prüfen, korrigieren und für <em>MIKE</em> exportieren.</h1>
+            <p class="lede">Lade eine Punktdatei, tausche oder spiegle Achsen, rechne Spalten um und exportiere eine saubere XYZ-Datei für den MIKE-Mesh-Generator. Die Datei wird in deinem Browser verarbeitet und nicht hochgeladen.</p>
+
+            <div class="drop" id="uploadZone">
+                <h2>Datei hierher ziehen</h2>
+                <div class="actions">
+                    <button class="btn primary" onclick="inp.click()">Datei auswählen</button>
+                    <button class="btn" onclick="loadSample()">Beispieldaten laden</button>
+                </div>
+                <p class="mono">.csv · .txt · .xyz · bis 100 MB · Trennzeichen wird erkannt</p>
+                <p class="mono">Beispieldaten: 400 erfundene Punkte eines Seebeckens bei Bremen, UTM 32N</p>
             </div>
             <input type="file" id="fileInput" accept=".csv,.txt,.xyz">
         </div>
+    </section>
 
-        <!-- ── Feature Info ── -->
-        <div class="info-section">
-            <div class="info-hero">
-                <div class="info-hero-title">XYZ Zero — File Editor</div>
-                <div class="info-hero-sub">A powerful in-browser editor for spatial coordinate files. Load, inspect, edit, mirror and export your XY(Z) data — no installation, no server processing.</div>
+    <section class="block alt">
+        <div class="wrap">
+            <div class="sec-head">
+                <div>
+                    <p class="eyebrow">Werkzeuge</p>
+                    <h2>Was du mit der Datei machen kannst</h2>
+                </div>
+                <p>Jede Änderung gilt sofort für alle Zeilen. Die Reihenfolge der Zeilen bleibt immer erhalten.</p>
             </div>
-
-            <div class="feature-grid">
-
-                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#7c3aed,#a78bfa)">
-                    <span class="feat-icon">🤖</span>
-                    <div class="feat-title">AI-Powered CRS Detection</div>
-                    <div class="feat-desc">Upload your file and the coordinate reference system (CRS) is detected automatically using AI. The result includes the exact name you need to select in MIKE DHI — no guessing required.</div>
-                    <span class="feat-badge badge-ai">AI</span>
-                </div>
-
-                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#10b981,#34d399)">
-                    <span class="feat-icon">↔</span>
-                    <div class="feat-title">Mirror &amp; Flip</div>
-                    <div class="feat-desc">Reflect your point cloud around the bounding-box centre — horizontally (X axis), vertically (Y axis), or both axes at once. The centre is calculated automatically; no manual input needed.</div>
-                    <span class="feat-badge badge-new">3 modes</span>
-                </div>
-
-                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#f59e0b,#fbbf24)">
-                    <span class="feat-icon">⚡</span>
-                    <div class="feat-title">Bulk Column Editing</div>
-                    <div class="feat-desc">Edit an entire column in one operation — add a constant, multiply, divide, set a fixed value, or apply a formula. Changes are applied instantly across all rows, no matter how large the file.</div>
-                    <span class="feat-badge badge-power">Power feature</span>
-                </div>
-
-                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#0ea5e9,#38bdf8)">
-                    <span class="feat-icon">📊</span>
-                    <div class="feat-title">Live Statistics</div>
-                    <div class="feat-desc">A per-column statistics bar shows the Min and Max of every column at a glance. Row count, column count and file size update in real time as you edit.</div>
-                    <span class="feat-badge badge-new">Auto-updates</span>
-                </div>
-
-                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#ec4899,#f472b6)">
-                    <span class="feat-icon">💾</span>
-                    <div class="feat-title">Flexible Export</div>
-                    <div class="feat-desc">Export your data in multiple formats — plain CSV (comma or semicolon), tab-delimited TXT, or MIKE by DHI XYZ format (space-delimited, dot decimals, no header). Column order is always preserved.</div>
-                    <span class="feat-badge badge-power">Multi-format</span>
-                </div>
-
-                <div class="feat-card" style="--feat-color:linear-gradient(90deg,#6366f1,#818cf8)">
-                    <span class="feat-icon">🗂️</span>
-                    <div class="feat-title">Column Management</div>
-                    <div class="feat-desc">Reorder columns with the ◀ ▶ arrow buttons in the header, add or remove columns at any time, and add individual rows. Row order is strictly preserved — the data is never silently sorted.</div>
-                    <span class="feat-badge badge-new">Non-destructive</span>
-                </div>
-
-            </div>
-
-            <div class="info-divider">Supported file formats</div>
-            <div class="formats-row">
-                <div class="fmt-chip"><span>.csv</span> — Comma / Semicolon delimited</div>
-                <div class="fmt-chip"><span>.txt</span> — Tab / Space / any delimiter</div>
-                <div class="fmt-chip"><span>.xyz</span> — MIKE DHI, plain XYZ grids</div>
-            </div>
+            <dl class="tools">
+                <div><dt>Spalten ordnen</dt><dd>Spalten mit ← und → verschieben, etwa wenn X und Y vertauscht sind. Zeilen und Spalten hinzufügen oder Spalten löschen.</dd></div>
+                <div><dt>Spiegeln</dt><dd>Punkte horizontal, vertikal oder in beide Richtungen um die Mitte der Bounding Box spiegeln.</dd></div>
+                <div><dt>Spalte umrechnen</dt><dd>Eine ganze Spalte multiplizieren, teilen, addieren, subtrahieren, runden oder durch einen festen Wert ersetzen.</dd></div>
+                <div><dt>WGS84 → UTM 32N</dt><dd>Geografische Koordinaten in Grad in Meter der UTM-Zone 32N umrechnen (Zentralmeridian 9°).</dd></div>
+                <div><dt>Koordinatensystem erkennen</dt><dd>Mistral AI schätzt aus bis zu 15 Punkten das Koordinatensystem und nennt den Eintrag, den du in MIKE auswählst. Das Ergebnis ist eine Schätzung. Auf dieser Seite brauchst du dafür einen eigenen Mistral-Key; gesendet werden nur diese Punkte.</dd></div>
+                <div><dt>Exportieren</dt><dd>XYZ für MIKE by DHI (Leerzeichen, Dezimalpunkt, ohne Kopfzeile), CSV oder TXT.</dd></div>
+            </dl>
         </div>
-    </div>
+    </section>
 
-    <!-- ── Editor ── -->
-    <div id="editorSection" style="display:none">
-        <div class="toolbar">
-            <button class="btn btn-primary"   onclick="openFile()">📁 Datei öffnen</button>
-            <button class="btn btn-secondary" onclick="addRow()">➕ Zeile</button>
-            <button class="btn btn-secondary" onclick="addColumn()">➕ Spalte</button>
-            <button class="btn btn-warning"   onclick="clearAll()">🗑️ Zurücksetzen</button>
-            <button class="btn btn-secondary" onclick="mirrorData('h')" title="Daten horizontal spiegeln (X-Achse)">↔ Spiegeln H</button>
-            <button class="btn btn-secondary" onclick="mirrorData('v')" title="Daten vertikal spiegeln (Y-Achse)">↕ Spiegeln V</button>
-            <button class="btn btn-secondary" onclick="mirrorData('both')" title="Beide Achsen gleichzeitig spiegeln (X und Y)">⤢ Spiegeln H+V</button>
-            <button class="btn btn-secondary" onclick="convertToUTM()" title="WGS84 Grad → UTM Zone 32N (Meter)" style="border-color:rgba(99,102,241,.5);color:#818cf8">🔄 WGS84 → UTM 32N</button>
-            <div class="file-info">
-                <span class="fn" id="fileName"></span>
-                <span class="badge" id="fileType"></span>
-                <span id="delimInfo" style="font-size:.8em"></span>
-            </div>
-            <button class="btn btn-primary" onclick="exportFile()">💾 Export</button>
+    <footer>
+        <div class="wrap mono">
+            <span>Everest · Omid Abduli</span>
+            <a href="https://github.com/omidabduli/everest-coordinate-editor" target="_blank" rel="noopener noreferrer">Quellcode auf GitHub ↗</a>
         </div>
+    </footer>
+</main>
 
-        <div class="stats-bar">
-            <div class="stat-card"><div class="stat-label">Zeilen</div><div class="stat-value" id="rowCount">0</div></div>
-            <div class="stat-card"><div class="stat-label">Spalten</div><div class="stat-value" id="colCount">0</div></div>
-            <div class="stat-card"><div class="stat-label">Dateigröße</div><div class="stat-value" id="dataSize">—</div></div>
-            <div class="stat-card" style="background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2)">
-                <div class="stat-label">Reihenfolge</div>
-                <div style="font-size:.75em;color:#34d399;font-weight:700;margin-top:2px;">✔ Zeilenreihenfolge<br>wird nicht verändert</div>
+<!-- ── Editor ── -->
+<main id="editorSection" style="display:none">
+    <div class="wrap wide editor">
+        <div class="file-head">
+            <div>
+                <h1 id="fileName"></h1>
+                <p class="mono"><span id="fileType"></span> · <span id="delimInfo"></span> · Zeilenreihenfolge bleibt erhalten</p>
+            </div>
+            <div class="actions">
+                <button class="btn" onclick="openFile()">Andere Datei</button>
+                <button class="btn primary" onclick="exportFile()">Exportieren</button>
             </div>
         </div>
 
-        <!-- Per-column min / max -->
-        <div class="col-stats-bar" id="colStatsBar" style="display:none">
-            <div id="colStatsContent" style="display:flex;gap:10px;min-width:max-content;"></div>
+        <div class="figures">
+            <div><strong id="rowCount">0</strong><span class="mono">Zeilen</span></div>
+            <div><strong id="colCount">0</strong><span class="mono">Spalten</span></div>
+            <div><strong id="dataSize">—</strong><span class="mono">Dateigröße</span></div>
         </div>
 
         <!-- CRS Detection -->
-        <div class="crs-panel" id="crsPanel">
-            <div class="crs-panel-head">
-                <span class="crs-title">🌐 Erkanntes Koordinatensystem</span>
-                <span class="crs-conf" id="crsConf">—</span>
+        <section class="crs" id="crsPanel">
+            <div class="crs-head">
+                <p class="eyebrow">Koordinatensystem</p>
+                <span class="status planned" id="crsConf">—</span>
             </div>
-            <div class="crs-body">
-                <div class="crs-mike" id="crs-mike-box">
-                    <div class="crs-mike-lbl">📌 In MIKE DHI auswählen:</div>
-                    <div class="crs-mike-path" id="crs-mike-path">—</div>
-                    <div class="crs-mike-name" id="crs-mike-name">—</div>
-                    <div class="crs-mike-note" id="crs-mike-note"></div>
+            <h2 class="crs-name" id="crsName"></h2>
+            <div class="crs-body" id="crsBody">
+                <div class="crs-mike">
+                    <p class="eyebrow">In MIKE by DHI auswählen</p>
+                    <p class="crs-mike-path" id="crs-mike-path">—</p>
+                    <p class="crs-mike-name" id="crs-mike-name">—</p>
+                    <p class="crs-mike-note" id="crs-mike-note"></p>
                 </div>
-                <div class="crs-props">
-                    <div class="crs-sys-name" id="crsName"></div>
-                    <table class="crs-table" id="crsTable"></table>
-                    <div class="crs-warn" id="crsUnknown" style="display:none"></div>
-                </div>
+                <table class="crs-table" id="crsTable"></table>
+            </div>
+            <div class="crs-warn" id="crsUnknown"></div>
+        </section>
+
+        <div class="toolbar">
+            <div class="group">
+                <button class="chip" onclick="addRow()">Zeile hinzufügen</button>
+                <button class="chip" onclick="addColumn()">Spalte hinzufügen</button>
+            </div>
+            <div class="group">
+                <span class="mono">Spiegeln</span>
+                <button class="chip" onclick="mirrorData('h')" title="X-Werte um die Mitte spiegeln">Horizontal</button>
+                <button class="chip" onclick="mirrorData('v')" title="Y-Werte um die Mitte spiegeln">Vertikal</button>
+                <button class="chip" onclick="mirrorData('both')" title="X- und Y-Werte spiegeln">Beide</button>
+            </div>
+            <div class="group">
+                <button class="chip" onclick="convertToUTM()" title="WGS84-Grad in UTM Zone 32N (Meter) umrechnen">WGS84 → UTM 32N</button>
+            </div>
+            <div class="group end">
+                <button class="link-btn" onclick="clearAll()">Zurücksetzen</button>
             </div>
         </div>
 
-        <div class="editor-container" style="padding:12px">
-            <div class="table-wrapper" id="tableWrapper">
-                <table>
-                    <thead id="tableHead"></thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
-            </div>
+        <div class="table-wrapper" id="tableWrapper">
+            <table class="data">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
         </div>
     </div>
-</div>
+</main>
 
 <!-- ── Bulk Edit Modal ── -->
 <div class="modal" id="bulkModal">
-    <div class="modal-box">
-        <div class="modal-title">Spalte bearbeiten: <span id="bulkColLabel"></span></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="bulkTitle">
+        <h2 class="modal-title" id="bulkTitle"><span id="bulkColLabel"></span> umrechnen</h2>
         <div class="fg">
-            <label>Operation</label>
+            <label for="bulkOp">Operation</label>
             <select id="bulkOp">
-                <option value="multiply">✖ Multiplizieren</option>
-                <option value="divide">÷ Dividieren</option>
-                <option value="add">＋ Addieren</option>
-                <option value="subtract">－ Subtrahieren</option>
-                <option value="round">⬤ Runden (Dezimalstellen)</option>
-                <option value="replace">↩ Alle Werte ersetzen</option>
+                <option value="multiply">Multiplizieren</option>
+                <option value="divide">Dividieren</option>
+                <option value="add">Addieren</option>
+                <option value="subtract">Subtrahieren</option>
+                <option value="round">Runden</option>
+                <option value="replace">Alle Werte ersetzen</option>
             </select>
         </div>
         <div class="fg" id="bulkValGrp">
-            <label>Wert</label>
-            <input type="number" id="bulkVal" step="any" placeholder="z.B.  1000">
+            <label for="bulkVal">Wert</label>
+            <input type="number" id="bulkVal" step="any" placeholder="z. B. 1000">
         </div>
         <div class="fg" id="bulkDecGrp" style="display:none">
-            <label>Dezimalstellen</label>
+            <label for="bulkDec">Dezimalstellen</label>
             <input type="number" id="bulkDec" min="0" max="10" value="3">
         </div>
         <div class="modal-foot">
-            <button class="btn btn-secondary" onclick="closeBulk()">Abbrechen</button>
-            <button class="btn btn-primary"   onclick="applyBulk()">Anwenden</button>
+            <button class="btn" onclick="closeBulk()">Abbrechen</button>
+            <button class="btn primary" onclick="applyBulk()">Anwenden</button>
         </div>
     </div>
 </div>
 
 <!-- ── Export Modal ── -->
 <div class="modal" id="exportModal">
-    <div class="modal-box">
-        <div class="modal-title">Export</div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+        <h2 class="modal-title" id="exportTitle">Exportieren</h2>
         <div class="fg">
-            <label>Format</label>
+            <label for="exportFmt">Format</label>
             <select id="exportFmt">
-                <option value="xyz-mike">XYZ — MIKE by DHI (space-delimited, kein Header)</option>
-                <option value="csv">CSV (Komma-getrennt)</option>
-                <option value="txt">TXT (Tab-getrennt)</option>
+                <option value="xyz-mike">XYZ für MIKE by DHI</option>
+                <option value="csv">CSV, kommagetrennt</option>
+                <option value="txt">TXT, tabgetrennt</option>
             </select>
         </div>
         <div class="fg">
-            <label style="display:flex;align-items:center;gap:8px;font-weight:normal;cursor:pointer">
-                <input type="checkbox" id="skipHdr" checked style="width:auto">
-                Erste Zeile automatisch ignorieren wenn sie Text enthält
-            </label>
+            <label class="check"><input type="checkbox" id="skipHdr" checked> Erste Zeile weglassen, wenn sie Text enthält</label>
         </div>
-        <div class="info-box">
-            <strong>MIKE-Format-Regeln:</strong><br>
-            • Keine Header-Zeile · Space-getrennt · Punkt als Dezimal<br>
-            • Kein Leerzeilen am Ende · 3 oder 4 Spalten (X Y Z [Code])
-        </div>
+        <p class="note">MIKE-Format: keine Kopfzeile, Leerzeichen als Trenner, Punkt als Dezimalzeichen, 3 oder 4 Spalten (X Y Z [Code]).</p>
         <div class="modal-foot">
-            <button class="btn btn-secondary" onclick="closeExport()">Abbrechen</button>
-            <button class="btn btn-primary"   onclick="doExport()">Exportieren</button>
+            <button class="btn" onclick="closeExport()">Abbrechen</button>
+            <button class="btn primary" onclick="doExport()">Exportieren</button>
         </div>
     </div>
 </div>
 
 <!-- ── API Key Settings Modal ── -->
 <div class="modal" id="apiKeyModal">
-    <div class="modal-box">
-        <div class="modal-title" style="font-family: 'Space Grotesk', sans-serif;">Mistral AI API-Key</div>
-        <div style="font-size: 0.88em; color: var(--text-muted); margin-bottom: 18px; line-height: 1.6;">
-            Trage hier deinen persönlichen <strong>Mistral AI API-Schlüssel</strong> ein. Der Schlüssel wird ausschließlich lokal in deinem Browser (localStorage) gespeichert. Er wird verwendet, um die Koordinatensystem-Erkennung (CRS-Detection) direkt von deinem Browser auszuführen.
-        </div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="keyTitle">
+        <h2 class="modal-title" id="keyTitle">Mistral-Key</h2>
+        <p class="modal-text">Mit deinem eigenen Mistral-API-Key erkennt Everest das Koordinatensystem direkt aus deinem Browser. Der Key wird nur in diesem Browser gespeichert (localStorage).</p>
         <div class="fg">
-            <label style="font-weight: 700; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.04em;">Mistral API Key</label>
-            <input type="password" id="apiKeyInput" placeholder="Pastiere deinen API-Key hier..." style="font-family: monospace;">
+            <label for="apiKeyInput">API-Key</label>
+            <input type="password" id="apiKeyInput" placeholder="Key einfügen" autocomplete="off" style="font-family:var(--mono)">
         </div>
-        <div class="info-box" style="margin-top: 16px; border-color: rgba(16,185,129,0.2);">
-            Schlüssel erstellen unter: <a href="https://console.mistral.ai/" target="_blank" style="color:var(--primary);text-decoration:none;font-weight:700;">console.mistral.ai</a>
-        </div>
+        <p class="note">Einen Key erstellst du unter <a href="https://console.mistral.ai/" target="_blank" rel="noopener noreferrer">console.mistral.ai</a>. Leer speichern löscht den Key.</p>
         <div class="modal-foot">
-            <button class="btn btn-secondary" onclick="closeApiKeyModal()">Abbrechen</button>
-            <button class="btn btn-primary" onclick="saveApiKey()">Speichern</button>
+            <button class="btn" onclick="closeApiKeyModal()">Abbrechen</button>
+            <button class="btn primary" onclick="saveApiKey()">Speichern</button>
         </div>
     </div>
 </div>
 
 <!-- ── Notification ── -->
-<div class="notif" id="notif"></div>
+<div class="notif" id="notif" role="status" aria-live="polite"></div>
 
 <script>
     // ── State ────────────────────────────────────────────────────────────────
@@ -666,11 +399,12 @@
     const BUFFER = 30;
     let   raf    = false;
 
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
     // ── Upload ───────────────────────────────────────────────────────────────
     const zone  = document.getElementById('uploadZone');
     const inp   = document.getElementById('fileInput');
 
-    zone.addEventListener('click', () => inp.click());
     zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
     zone.addEventListener('drop', e => {
@@ -681,7 +415,7 @@
     inp.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
 
     function loadFile(file) {
-        if (file.size > 100 * 1024 * 1024) { toast('Datei zu groß (max 100 MB)', 'err'); return; }
+        if (file.size > 100 * 1024 * 1024) { toast('Datei zu groß (max. 100 MB)', 'err'); return; }
         const ext = file.name.split('.').pop().toLowerCase();
         if (!['csv','txt','xyz'].includes(ext)) { toast('Format nicht unterstützt (.csv .txt .xyz)', 'err'); return; }
         fname  = file.name;
@@ -690,6 +424,24 @@
         const r = new FileReader();
         r.onload = e => parseContent(e.target.result);
         r.readAsText(file);
+    }
+
+    // Invented sample so the editor can be tried without a file:
+    // a 20 × 20 grid over a lake bed near Bremen, UTM Zone 32N in metres, depth in metres.
+    function loadSample() {
+        const lines = ['X Y Z'];
+        for (let i = 0; i < 20; i++) {
+            for (let j = 0; j < 20; j++) {
+                const dx = (i - 9.5) / 9.5, dy = (j - 9.5) / 9.5;
+                const depth = 6.5 * Math.max(0, 1 - (dx * dx + dy * dy)) + 0.4;
+                lines.push(`${487200 + i * 25} ${5882400 + j * 25} ${(-depth).toFixed(2)}`);
+            }
+        }
+        const text = lines.join('\n');
+        fname  = 'beispieldaten_utm32n.xyz';
+        ftype  = 'XYZ';
+        fbytes = new Blob([text]).size;
+        parseContent(text);
     }
 
     // ── Parse ────────────────────────────────────────────────────────────────
@@ -738,14 +490,15 @@
             rows.push(cells);
         }
 
-        if (!rows.length) { toast('Datei ist leer!', 'err'); return; }
+        if (!rows.length) { toast('Datei ist leer', 'err'); return; }
 
-        const dLabel = delim === '\t' ? 'Tab' : delim === ' ' ? 'Space' : `"${delim}"`;
-        document.getElementById('delimInfo').textContent   = `| Trennzeichen: ${dLabel}`;
+        const dLabel = delim === '\t' ? 'Tab' : delim === ' ' ? 'Leerzeichen' : `„${delim}“`;
+        document.getElementById('delimInfo').textContent   = `Trennzeichen: ${dLabel}`;
         document.getElementById('fileName').textContent    = fname;
         document.getElementById('fileType').textContent    = ftype;
         document.getElementById('uploadSection').style.display = 'none';
         document.getElementById('editorSection').style.display = 'block';
+        window.scrollTo(0, 0);
         updateStats();
         buildTable();
         computeColStats();
@@ -756,16 +509,16 @@
     // ── Table (virtual scroll) ────────────────────────────────────────────────
     function buildTable() {
         const thead = document.getElementById('tableHead');
-        let h = '<tr><th class="row-num">#</th>';
+        let h = '<tr><th class="row-num mono">#</th>';
         for (let i = 0; i < ncols; i++) {
-            // ◀ ▶ buttons let the user reorder columns (e.g. swap X/Y if source has them reversed)
-            const leftBtn  = i > 0        ? `<button class="col-btn" onclick="moveCol(${i},-1)" title="Spalte nach links">◀</button>` : '';
-            const rightBtn = i < ncols-1  ? `<button class="col-btn" onclick="moveCol(${i},+1)" title="Spalte nach rechts">▶</button>` : '';
-            h += `<th><div class="col-hdr"><span>Spalte ${i+1}</span><div style="display:flex;gap:3px">` +
+            // ← → buttons let the user reorder columns (e.g. swap X/Y if source has them reversed)
+            const leftBtn  = i > 0        ? `<button class="col-btn" onclick="moveCol(${i},-1)" title="Spalte nach links" aria-label="Spalte ${i+1} nach links">←</button>` : '';
+            const rightBtn = i < ncols-1  ? `<button class="col-btn" onclick="moveCol(${i},+1)" title="Spalte nach rechts" aria-label="Spalte ${i+1} nach rechts">→</button>` : '';
+            h += `<th><div class="col-hdr"><span>Spalte ${i+1}</span><div class="col-btns">` +
                  leftBtn + rightBtn +
-                 `<button class="col-btn" onclick="startBulk(${i})" title="Spalte bearbeiten">✏️</button>` +
-                 `<button class="col-btn" onclick="delCol(${i})" title="Spalte löschen">✕</button>` +
-                 `</div></div></th>`;
+                 `<button class="col-btn" onclick="startBulk(${i})" title="Spalte umrechnen">Umrechnen</button>` +
+                 `<button class="col-btn" onclick="delCol(${i})" title="Spalte löschen" aria-label="Spalte ${i+1} löschen">×</button>` +
+                 `</div></div><span class="col-range mono" id="colRange${i}"></span></th>`;
         }
         h += '</tr>';
         thead.innerHTML = h;
@@ -795,7 +548,7 @@
             for (let c = 0; c < ncols; c++) {
                 const v    = (row && row[c] != null) ? row[c] : '';
                 const safe = v.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-                h += `<td><input type="text" value="${safe}" data-r="${r}" data-c="${c}"></td>`;
+                h += `<td><input type="text" value="${safe}" data-r="${r}" data-c="${c}" aria-label="Zeile ${r+1}, Spalte ${c+1}"></td>`;
             }
             h += '</tr>';
         }
@@ -826,8 +579,8 @@
         document.getElementById('rowCount').textContent = rows.length.toLocaleString('de');
         document.getElementById('colCount').textContent = ncols;
         document.getElementById('dataSize').textContent =
-            fbytes >= 1048576 ? (fbytes/1048576).toFixed(2)+' MB'
-          : fbytes > 0        ? (fbytes/1024).toFixed(1)+' KB'
+            fbytes >= 1048576 ? (fbytes/1048576).toLocaleString('de',{maximumFractionDigits:2})+' MB'
+          : fbytes > 0        ? (fbytes/1024).toLocaleString('de',{maximumFractionDigits:1})+' KB'
           : '—';
     }
 
@@ -845,10 +598,14 @@
 
     // ── CRS Detection via Mistral AI ──────────────────────────────────────────
 
+    const confLabels = { high: ['Konfidenz hoch', 'done'], medium: ['Konfidenz mittel', 'active'], low: ['Konfidenz niedrig', 'planned'] };
+    function setConf(el, text, state) { el.textContent = text; el.className = `status ${state}`; }
+
     async function detectCRS() {
         const panel      = document.getElementById('crsPanel');
         const confEl     = document.getElementById('crsConf');
         const nameEl     = document.getElementById('crsName');
+        const bodyEl     = document.getElementById('crsBody');
         const tableEl    = document.getElementById('crsTable');
         const unknEl     = document.getElementById('crsUnknown');
         const mikePathEl = document.getElementById('crs-mike-path');
@@ -867,13 +624,13 @@
         if (pairs.length < 3) { panel.style.display = 'none'; return; }
 
         // Show panel in loading state
-        panel.style.display  = 'block';
-        mikePathEl.textContent = '⏳ KI analysiert…';
+        panel.style.display    = 'block';
+        bodyEl.style.display   = 'grid';
+        mikePathEl.textContent = 'Wird ermittelt …';
         mikeNameEl.textContent = '';
         mikeNoteEl.textContent = '';
-        nameEl.textContent     = '';
-        confEl.textContent     = '⏳ Warte auf Mistral AI…';
-        confEl.className       = 'crs-conf medium';
+        nameEl.textContent     = 'Mistral AI prüft die Koordinaten …';
+        setConf(confEl, 'Läuft', 'planned');
         tableEl.innerHTML      = '';
         unknEl.style.display   = 'none';
 
@@ -913,8 +670,8 @@ Respond ONLY with a JSON object — no markdown, no extra text:
   "note": "short remark if needed, otherwise empty string"
 }`;
 
+        const api_key = localStorage.getItem('mistral_api_key');
         try {
-            const api_key = localStorage.getItem('mistral_api_key');
             let resp;
             if (api_key) {
                 resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -944,13 +701,13 @@ Respond ONLY with a JSON object — no markdown, no extra text:
 
             if (!resp.ok) {
                 if (resp.status === 401) {
-                    throw new Error("Ungültiger Mistral API-Schlüssel (401 Unauthorized). Bitte überprüfe deine Einstellungen.");
+                    throw new Error('Der Mistral-Key wurde abgelehnt (401). Bitte prüfe ihn.');
                 }
                 // No local server behind the page (e.g. GitHub Pages answers 404/405)
                 if (!api_key && [404, 405, 501].includes(resp.status)) {
-                    throw new Error("Kein lokaler Server gefunden. Bitte richte oben deinen 🔑 Mistral API-Key ein, um die Erkennung auf GitHub Pages zu nutzen.");
+                    throw new Error('Für die Erkennung auf dieser Seite brauchst du einen eigenen Mistral-Key.');
                 }
-                throw new Error(`API returned status ${resp.status}`);
+                throw new Error(`Die Anfrage ist fehlgeschlagen (Status ${resp.status}).`);
             }
 
             const data    = await resp.json();
@@ -959,58 +716,51 @@ Respond ONLY with a JSON object — no markdown, no extra text:
             const jsonStr = raw.replace(/^```[a-z]*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
             const crs     = JSON.parse(jsonStr);
 
-            // Populate confidence badge
-            const conf = (crs.confidence || 'low').toLowerCase();
-            confEl.textContent = conf === 'high'   ? '✔ Konfidenz: Hoch'
-                               : conf === 'medium' ? '⚠ Konfidenz: Mittel'
-                               :                     '? Niedrig';
-            confEl.className = `crs-conf ${conf}`;
+            const conf = confLabels[(crs.confidence || 'low').toLowerCase()] || confLabels.low;
+            setConf(confEl, conf[0], conf[1]);
 
-            // Populate MIKE DHI recommendation box
+            // MIKE DHI recommendation
             mikePathEl.textContent = (crs.mike_path || '—') + ' →';
             mikeNameEl.textContent = crs.mike_name  || crs.crs_name || '—';
             mikeNoteEl.textContent = crs.note || '';
 
-            // System name headline
-            nameEl.textContent = (conf === 'high' ? '✔ ' : '⚠ ') + (crs.crs_name || '—');
+            nameEl.textContent = crs.crs_name || '—';
 
             // ArcGIS-style properties table
             const propRows = [
-                ['Name',             crs.crs_name        || '—'],
                 ['EPSG',             crs.epsg            || '—'],
                 ['Datum',            crs.datum           || '—'],
                 ['Ellipsoid',        crs.ellipsoid       || '—'],
-                ['Prime Meridian',   '0 - Greenwich',       '[Degree]'],
-                ['Projection Type',  crs.projection      || '—'],
-                ['Central Meridian', crs.central_meridian|| '—', crs.projection !== 'Geographic' ? '[Degree]' : ''],
-                ['False Easting',    crs.false_easting   || '—',  '[Meter]'],
-                ['False Northing',   crs.false_northing  || '—',  '[Meter]'],
+                ['Nullmeridian',     '0 – Greenwich',       'Grad'],
+                ['Projektion',       crs.projection      || '—'],
+                ['Zentralmeridian',  crs.central_meridian|| '—', crs.projection !== 'Geographic' ? 'Grad' : ''],
+                ['False Easting',    crs.false_easting   || '—',  'Meter'],
+                ['False Northing',   crs.false_northing  || '—',  'Meter'],
             ];
             tableEl.innerHTML = propRows
-                .map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2] || ''}</td></tr>`)
+                .map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2] || '')}</td></tr>`)
                 .join('');
             unknEl.style.display = 'none';
 
         } catch (err) {
             // Show error + raw statistics
-            confEl.textContent   = '? Fehler';
-            confEl.className     = 'crs-conf low';
-            mikePathEl.textContent = '—';
-            mikeNameEl.textContent = '—';
-            mikeNoteEl.textContent = '';
-            nameEl.textContent   = '⚠ KI-Erkennung fehlgeschlagen';
-            tableEl.innerHTML    = '';
-            unknEl.style.display = 'block';
-            unknEl.textContent   = `Fehler: ${err.message}  |  Median X: ${Math.round(xmed).toLocaleString('de')}  |  Median Y: ${Math.round(ymed).toLocaleString('de')}  |  X: ${Math.round(xminV).toLocaleString('de')}–${Math.round(xmaxV).toLocaleString('de')}  |  Y: ${Math.round(yminV).toLocaleString('de')}–${Math.round(ymaxV).toLocaleString('de')}`;
+            setConf(confEl, 'Nicht erkannt', 'planned');
+            nameEl.textContent   = 'Koordinatensystem nicht erkannt';
+            bodyEl.style.display = 'none';
+            const n = v => Math.round(v).toLocaleString('de');
+            unknEl.innerHTML =
+                `<p>${esc(err.message)}</p>` +
+                `<p class="mono">Median X ${n(xmed)} · Median Y ${n(ymed)} · X ${n(xminV)} – ${n(xmaxV)} · Y ${n(yminV)} – ${n(ymaxV)}</p>` +
+                (api_key ? '' : '<button class="btn small" onclick="openApiKeyModal()">Mistral-Key eintragen</button>');
+            unknEl.style.display = 'grid';
         }
     }
 
-    // ── Compute per-column min / max ──────────────────────────────────────────
+    // ── Compute per-column min / max (shown in the table header) ─────────────
     function computeColStats() {
-        const bar  = document.getElementById('colStatsBar');
-        const cont = document.getElementById('colStatsContent');
-        if (!rows.length || !ncols) { bar.style.display = 'none'; return; }
-        let html = '';
+        if (!rows.length || !ncols) return;
+        // Format: suppress trailing zeros but keep up to 6 sig figs
+        const fmt = n => parseFloat(n.toPrecision(6)).toLocaleString('de', {maximumFractionDigits: 6});
         for (let c = 0; c < ncols; c++) {
             let mn = Infinity, mx = -Infinity, cnt = 0;
             for (let r = 0; r < rows.length; r++) {
@@ -1018,18 +768,9 @@ Respond ONLY with a JSON object — no markdown, no extra text:
                 const n = parseFloat(v);
                 if (!isNaN(n)) { if (n < mn) mn = n; if (n > mx) mx = n; cnt++; }
             }
-            // Format: suppress trailing zeros but keep up to 6 sig figs
-            const fmt = n => parseFloat(n.toPrecision(6)).toLocaleString('de', {maximumFractionDigits: 6});
-            html += `<div class="csi">` +
-                    `<div class="csi-lbl">Spalte ${c+1}</div>` +
-                    (cnt > 0
-                        ? `<div class="csi-body"><span style="color:var(--text-muted)">Min&nbsp;</span><span class="csi-min">${fmt(mn)}</span><br><span style="color:var(--text-muted)">Max&nbsp;</span><span class="csi-max">${fmt(mx)}</span></div>`
-                        : `<div class="csi-txt">Text / leer</div>`
-                    ) +
-                    `</div>`;
+            const el = document.getElementById(`colRange${c}`);
+            if (el) el.textContent = cnt > 0 ? `${fmt(mn)} – ${fmt(mx)}` : 'Text oder leer';
         }
-        cont.innerHTML = html;
-        bar.style.display = 'block';
     }
 
     function addRow()    { rows.push(new Array(ncols).fill('')); updateStats(); renderRows(); toast('Zeile hinzugefügt','ok'); }
@@ -1116,7 +857,7 @@ Respond ONLY with a JSON object — no markdown, no extra text:
 
         // Sanity check — values must look like geographic degrees
         if (r0.lo < -180 || r0.hi > 180 || r1.lo < -180 || r1.hi > 180) {
-            toast('Koordinaten scheinen nicht in WGS84-Grad zu sein', 'err'); return;
+            toast('Die Koordinaten sehen nicht nach WGS84-Grad aus', 'err'); return;
         }
 
         let converted = 0;
@@ -1133,7 +874,7 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         buildTable();
         computeColStats();
         detectCRS();
-        toast(`✔ ${converted.toLocaleString('de')} Punkte → UTM 32N  (Sp.${colLon+1}=Easting, Sp.${colLat+1}=Northing)`, 'ok');
+        toast(`${converted.toLocaleString('de')} Punkte in UTM 32N umgerechnet (Spalte ${colLon+1} Easting, Spalte ${colLat+1} Northing)`, 'ok');
     }
 
     // ── Mirror / Flip ──────────────────────────────────────────────────────────
@@ -1188,19 +929,19 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         computeColStats();
         detectCRS();
 
-        const fmtRange = (r) => r ? `${r.lo.toLocaleString('de',{maximumFractionDigits:6})} ↔ ${r.hi.toLocaleString('de',{maximumFractionDigits:6})}` : '–';
+        const fmtRange = (r) => r ? `${r.lo.toLocaleString('de',{maximumFractionDigits:6})} – ${r.hi.toLocaleString('de',{maximumFractionDigits:6})}` : '–';
         if (axis === 'both') {
-            toast(`H+V gespiegelt  |  X(Sp.${colX+1}): ${fmtRange(resX)}  |  Y(Sp.${colY+1}): ${fmtRange(resY)}`, 'ok');
+            toast(`Beide Achsen gespiegelt · X (Spalte ${colX+1}) ${fmtRange(resX)} · Y (Spalte ${colY+1}) ${fmtRange(resY)}`, 'ok');
         } else if (axis === 'h') {
-            toast(`H gespiegelt  —  X ist Spalte ${colX+1}  |  X-Bereich: ${fmtRange(resX)}`, 'ok');
+            toast(`Horizontal gespiegelt · X ist Spalte ${colX+1} · ${fmtRange(resX)}`, 'ok');
         } else {
-            toast(`V gespiegelt  —  Y ist Spalte ${colY+1}  |  Y-Bereich: ${fmtRange(resY)}`, 'ok');
+            toast(`Vertikal gespiegelt · Y ist Spalte ${colY+1} · ${fmtRange(resY)}`, 'ok');
         }
     }
     function addColumn() {
         ncols++;
         for (let i = 0; i < rows.length; i++) while (rows[i].length < ncols) rows[i].push('');
-        buildTable(); updateStats(); toast('Spalte hinzugefügt','ok');
+        buildTable(); updateStats(); computeColStats(); toast('Spalte hinzugefügt','ok');
     }
     function delCol(c) {
         if (!confirm(`Spalte ${c+1} löschen?`)) return;
@@ -1217,7 +958,7 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         toast('Zurückgesetzt','ok');
     }
     function openFile() {
-        if (rows.length && !confirm('Aktuelle Daten gehen verloren. Fortfahren?')) return;
+        if (rows.length && !confirm('Die aktuellen Daten gehen verloren. Fortfahren?')) return;
         inp.value = ''; inp.click();
     }
 
@@ -1258,7 +999,7 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         renderRows();
         computeColStats();
         closeBulk();
-        toast('Spalte bearbeitet!', 'ok');
+        toast('Spalte umgerechnet', 'ok');
     }
 
     // ── Export ────────────────────────────────────────────────────────────────
@@ -1302,9 +1043,9 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         }
         // Remove trailing blank lines
         while (lines.length && !lines[lines.length-1].trim()) lines.pop();
-        if (!lines.length) { toast('Keine gültigen numerischen Daten!', 'err'); return; }
+        if (!lines.length) { toast('Keine gültigen numerischen Daten', 'err'); return; }
         dl(lines.join('\n'), base()+'.xyz', 'text/plain;charset=utf-8');
-        toast('XYZ exportiert (MIKE-konform)', 'ok');
+        toast('XYZ für MIKE exportiert', 'ok');
     }
 
     function dl(content, name, mime) {
@@ -1329,13 +1070,8 @@ Respond ONLY with a JSON object — no markdown, no extra text:
     function updateApiSettingsButton() {
         const btn = document.getElementById('apiSettingsBtn');
         const key = localStorage.getItem('mistral_api_key');
-        if (key) {
-            btn.classList.add('configured');
-            btn.innerHTML = '🔑 API Key (Konfiguriert)';
-        } else {
-            btn.classList.remove('configured');
-            btn.innerHTML = '🔑 Mistral API-Key';
-        }
+        btn.classList.toggle('configured', !!key);
+        btn.lastElementChild.textContent = key ? 'Mistral-Key gespeichert' : 'Mistral-Key';
     }
 
     function openApiKeyModal() {
@@ -1343,6 +1079,7 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         const input = document.getElementById('apiKeyInput');
         input.value = localStorage.getItem('mistral_api_key') || '';
         modal.classList.add('active');
+        input.focus();
     }
 
     function closeApiKeyModal() {
@@ -1353,10 +1090,10 @@ Respond ONLY with a JSON object — no markdown, no extra text:
         const val = document.getElementById('apiKeyInput').value.trim();
         if (val) {
             localStorage.setItem('mistral_api_key', val);
-            toast('API-Key erfolgreich gespeichert!', 'ok');
+            toast('Mistral-Key gespeichert', 'ok');
         } else {
             localStorage.removeItem('mistral_api_key');
-            toast('API-Key gelöscht.', 'ok');
+            toast('Mistral-Key gelöscht', 'ok');
         }
         updateApiSettingsButton();
         closeApiKeyModal();
@@ -1366,10 +1103,11 @@ Respond ONLY with a JSON object — no markdown, no extra text:
     // Initialize API Key Button
     updateApiSettingsButton();
 
-    // Close modals on backdrop click
+    // Close modals on backdrop click or Escape
     document.getElementById('bulkModal').addEventListener('click',   e => { if (e.target.id === 'bulkModal')   closeBulk(); });
     document.getElementById('exportModal').addEventListener('click', e => { if (e.target.id === 'exportModal') closeExport(); });
     document.getElementById('apiKeyModal').addEventListener('click', e => { if (e.target.id === 'apiKeyModal') closeApiKeyModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeBulk(); closeExport(); closeApiKeyModal(); } });
 </script>
 </body>
 </html>
